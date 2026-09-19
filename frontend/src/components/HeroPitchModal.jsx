@@ -67,11 +67,11 @@ export default function HeroPitchModal({ isOpen, onClose, onSelectScenario }) {
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
-      <div className="relative w-full max-w-4xl bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden my-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+      <div className="relative w-full max-w-4xl max-h-[92vh] flex flex-col bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header Ribbon */}
-        <div className="bg-rose-50 px-6 py-4 border-b border-rose-100 flex items-center justify-between">
+        <div className="bg-rose-50 px-4 sm:px-6 py-3.5 sm:py-4 border-b border-rose-100 flex items-center justify-between shrink-0">
           <div className="flex items-center space-x-2.5">
             <span className="px-2.5 py-0.5 rounded-full bg-rose-600 text-white text-[11px] font-mono font-bold uppercase tracking-wider">
               Capstone Prototype • Investable Demo
@@ -80,13 +80,13 @@ export default function HeroPitchModal({ isOpen, onClose, onSelectScenario }) {
           </div>
           <button
             onClick={onClose}
-            className="p-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="p-6 sm:p-8 space-y-8">
+        <div className="p-4 sm:p-8 space-y-6 sm:space-y-8 overflow-y-auto">
           
           {/* Hero Pitch Headline */}
           <div className="space-y-3">

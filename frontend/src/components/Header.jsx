@@ -119,12 +119,12 @@ export default function Header({
         </div>
 
         {/* Right: User Role Badge, Theme Switcher, Logout, Pitch Modal & Sound Control */}
-        <div className="flex items-center space-x-2 shrink-0">
+        <div className="flex items-center space-x-1 sm:space-x-2 shrink-0 justify-end">
           
           {/* User Role Badge */}
           <div
             onClick={onOpenRoleModal}
-            className="flex items-center space-x-2 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-all shadow-xs cursor-pointer group"
+            className="flex items-center space-x-1.5 sm:space-x-2 px-2 sm:px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-all shadow-xs cursor-pointer group"
             title="Click to switch operator role or manage authentication"
           >
             <div className={`p-1.5 rounded-lg text-white shrink-0 ${
@@ -135,15 +135,15 @@ export default function Header({
             }`}>
               {currentUser?.id === 'admin' ? <Crown className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
             </div>
-            <div className="text-left leading-tight">
+            <div className="text-left leading-tight hidden xs:block sm:block">
               <div className="flex items-center space-x-1">
                 <span className="text-[10px] uppercase font-bold text-slate-400">User:</span>
-                <span className="text-xs font-black text-slate-900 group-hover:text-rose-600 truncate max-w-[120px] sm:max-w-[140px]">
+                <span className="text-xs font-black text-slate-900 group-hover:text-rose-600 truncate max-w-[90px] sm:max-w-[140px]">
                   {currentUser?.badge || 'OPERATOR'}
                 </span>
                 <span className="text-[10px] text-slate-400">▾</span>
               </div>
-              <div className="text-[10px] text-slate-500 font-medium truncate max-w-[140px] hidden sm:block">
+              <div className="text-[10px] text-slate-500 font-medium truncate max-w-[120px] hidden sm:block">
                 {currentUser?.userName?.split(' (')[0] || currentUser?.name}
               </div>
             </div>
@@ -153,17 +153,17 @@ export default function Header({
           <button
             onClick={toggleTheme}
             title={theme === 'dark' ? 'Switch to Crisp Light Mode' : 'Switch to Tactical Dark Mode'}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 text-xs font-bold transition-all shadow-xs cursor-pointer"
+            className="flex items-center space-x-1 px-2 sm:px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 text-xs font-bold transition-all shadow-xs cursor-pointer"
           >
             {theme === 'dark' ? (
               <>
                 <Sun className="w-3.5 h-3.5 text-amber-500" />
-                <span className="hidden sm:inline text-slate-800">Light</span>
+                <span className="hidden md:inline text-slate-800">Light</span>
               </>
             ) : (
               <>
                 <Moon className="w-3.5 h-3.5 text-slate-700" />
-                <span className="hidden sm:inline text-slate-700">Dark</span>
+                <span className="hidden md:inline text-slate-700">Dark</span>
               </>
             )}
           </button>
@@ -174,7 +174,7 @@ export default function Header({
               soundFx.playClick();
               onLogout();
             }}
-            className="flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 border border-slate-200 text-slate-700 text-xs font-bold transition-all shadow-xs cursor-pointer"
+            className="flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 border border-slate-200 text-slate-700 text-xs font-bold transition-all shadow-xs cursor-pointer"
             title="Log out and return to the Login Page"
           >
             <LogOut className="w-3.5 h-3.5" />
@@ -184,17 +184,17 @@ export default function Header({
           {/* Project Pitch / Presentation */}
           <button
             onClick={onOpenPitch}
-            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-bold transition-all shadow-xs cursor-pointer"
+            className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-bold transition-all shadow-xs cursor-pointer"
           >
             <Presentation className="w-3.5 h-3.5 text-rose-600" />
-            <span className="hidden sm:inline">Mission Tech</span>
+            <span className="hidden md:inline">Mission Tech</span>
           </button>
 
           {/* Siren Audio Mute */}
           <button
             onClick={handleToggleMute}
             title={isMuted ? 'Unmute Audio Sirens' : 'Mute Audio Sirens'}
-            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 transition-colors cursor-pointer"
+            className="p-1.5 sm:p-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 transition-colors cursor-pointer"
           >
             {isMuted ? <VolumeX className="w-4 h-4 text-slate-400" /> : <Volume2 className="w-4 h-4 text-rose-600" />}
           </button>

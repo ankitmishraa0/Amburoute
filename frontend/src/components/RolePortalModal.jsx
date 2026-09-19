@@ -123,11 +123,11 @@ export default function RolePortalModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/65 backdrop-blur-xs overflow-y-auto">
-      <div className="relative w-full max-w-2xl bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/65 backdrop-blur-xs overflow-y-auto">
+      <div className="relative w-full max-w-2xl max-h-[92vh] flex flex-col bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200">
         
         {/* Header Ribbon */}
-        <div className="bg-rose-50 px-6 py-4 border-b border-rose-100 flex items-center justify-between">
+        <div className="bg-rose-50 px-4 sm:px-6 py-3.5 sm:py-4 border-b border-rose-100 flex items-center justify-between shrink-0">
           <div className="flex items-center space-x-2.5">
             <div className="p-2 rounded-xl bg-rose-600 text-white shadow-xs">
               <KeyRound className="w-5 h-5" />
@@ -177,7 +177,7 @@ export default function RolePortalModal({
 
         {/* TAB 1: QUICK ROLE SWITCH */}
         {authMode === 'quick' && (
-          <div className="p-6 space-y-3.5">
+          <div className="p-4 sm:p-6 space-y-3.5 overflow-y-auto max-h-[calc(92vh-130px)]">
             <div className="text-xs text-slate-500 font-medium pb-1 flex items-center justify-between">
               <span>Select workstation portal to instantly assume operator identity:</span>
               <span className="text-[11px] text-rose-600 font-bold">1-Click Live Switch</span>
@@ -237,7 +237,7 @@ export default function RolePortalModal({
 
         {/* TAB 2: CREDENTIALS FORM LOGIN */}
         {authMode === 'form' && (
-          <form onSubmit={handleFormLogin} className="p-6 space-y-4">
+          <form onSubmit={handleFormLogin} className="p-4 sm:p-6 space-y-4 overflow-y-auto max-h-[calc(92vh-130px)]">
             <div>
               <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5">
                 Select Department Role
