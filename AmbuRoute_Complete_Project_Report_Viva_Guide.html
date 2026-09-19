@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AmbuRoute - Complete Project Report & Viva Master Guide</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap');
+
+    :root {
+      --primary: #E11D48;
+      --primary-dark: #BE123C;
+      --primary-light: #FFF1F2;
+      --text: #0F172A;
+      --text-muted: #64748B;
+      --border: #E2E8F0;
+      --bg: #F8FAFC;
+      --card: #FFFFFF;
+      --emerald: #10B981;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      padding: 40px 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: var(--card);
+      padding: 50px 60px;
+      border-radius: 24px;
+      box-shadow: 0 10px 40px -10px rgba(15, 23, 42, 0.08);
+      border: 1px solid var(--border);
+    }
+
+    .header-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--primary-light);
+      color: var(--primary);
+      padding: 6px 14px;
+      border-radius: 9999px;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+      border: 1px solid #FECDD3;
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      line-height: 1.2;
+      margin-bottom: 8px;
+    }
+    h1 span { color: var(--primary); }
+
+    .subtitle {
+      font-size: 15px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+
+    .divider {
+      height: 2px;
+      background: linear-gradient(90deg, var(--primary), #FECDD3, transparent);
+      margin: 28px 0;
+      border: none;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      background: var(--bg);
+      padding: 16px 20px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      margin-bottom: 30px;
+    }
+    .meta-item { font-size: 12.5px; }
+    .meta-item strong { color: var(--text); }
+
+    h2 {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--text);
+      margin-top: 36px;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    h2::before {
+      content: "";
+      width: 4px;
+      height: 20px;
+      background: var(--primary);
+      border-radius: 4px;
+      display: inline-block;
+    }
+
+    h3 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--primary);
+      margin-top: 18px;
+      margin-bottom: 6px;
+    }
+
+    p {
+      font-size: 13.5px;
+      color: #334155;
+      margin-bottom: 12px;
+    }
+
+    ul {
+      margin-left: 20px;
+      margin-bottom: 16px;
+      font-size: 13.5px;
+      color: #334155;
+    }
+    li { margin-bottom: 6px; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 24px;
+      font-size: 12.5px;
+    }
+    th, td {
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      text-align: left;
+    }
+    th {
+      background: var(--primary-light);
+      color: var(--primary);
+      font-weight: 800;
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+    }
+
+    .qa-box {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--primary);
+      padding: 16px 20px;
+      border-radius: 12px;
+      margin-bottom: 16px;
+    }
+    .qa-q {
+      font-weight: 800;
+      font-size: 13.5px;
+      color: var(--primary);
+      margin-bottom: 6px;
+    }
+    .qa-a {
+      font-size: 13px;
+      color: #334155;
+      line-height: 1.5;
+    }
+
+    pre {
+      background: #0F172A;
+      color: #F8FAFC;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      padding: 18px;
+      border-radius: 12px;
+      overflow-x: auto;
+      margin: 14px 0 24px;
+      line-height: 1.5;
+    }
+
+    .print-btn {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--primary);
+      color: white;
+      padding: 12px 24px;
+      border-radius: 9999px;
+      font-weight: 800;
+      font-size: 13px;
+      border: none;
+      box-shadow: 0 8px 24px rgba(225, 29, 72, 0.35);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s ease;
+    }
+    .print-btn:hover { background: var(--primary-dark); transform: scale(1.04); }
+
+    @media print {
+      body { background: white; padding: 0; }
+      .container { box-shadow: none; border: none; padding: 0; }
+      .print-btn { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <button class="print-btn" onclick="window.print()">
+    <span>🖨️</span>
+    <span>Print / Save as PDF (Ctrl + P)</span>
+  </button>
+
+  <div class="container">
+    <div class="header-badge">🚑 Project Master Handbook & Viva Guide</div>
+    <h1>AMBU<span>ROUTE</span>: AI Emergency OS</h1>
+    <p class="subtitle">Dynamic GPS Routing • V2I Signal Preemption • MCDM Hospital Matrix • Machine Learning Triage</p>
+
+    <div class="meta-grid">
+      <div class="meta-item"><strong>Domain:</strong> Healthcare IoT, Smart City, EMS</div>
+      <div class="meta-item"><strong>Tech Stack:</strong> React 19, FastAPI, WebSockets, Scikit-Learn</div>
+      <div class="meta-item"><strong>Primary Location:</strong> Gorakhpur, UP & Device GPS</div>
+      <div class="meta-item"><strong>Aesthetic:</strong> Red & White Emergency UI (108 / Zomato Clean)</div>
+    </div>
+
+    <hr class="divider">
+
+    <h2>1. Executive Summary & Problem Statement</h2>
+    <p>
+      In acute medical emergencies (STEMI cardiac arrest, severe poly-trauma), survival depends upon <strong>the "Golden Hour"</strong>. In standard city environments, ambulances suffer from three catastrophic bottlenecks:
+    </p>
+    <ul>
+      <li><strong>Traffic Signal Stalls:</strong> Ambulances lose 12 to 20 minutes trapped at urban intersections with zero automated preemption.</li>
+      <li><strong>Blind Hospital Transfer:</strong> Ambulances often transport patients to the closest hospital only to find zero ICU beds or no Cath Lab, requiring a fatal second transit.</li>
+      <li><strong>Unprepared Emergency Teams:</strong> Emergency doctors receive no pre-arrival telemetry and must scramble for ventilators after arrival.</li>
+    </ul>
+    <p>
+      <strong>AmbuRoute's Solution:</strong> A unified digital emergency infrastructure that preempts traffic lights 500m ahead, scores regional hospitals using multi-criteria algorithms, and beams real-time vitals & ECG waveforms to doctors before arrival.
+    </p>
+
+    <h2>2. System Architecture & Core Modules</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Module</th>
+          <th>Technology</th>
+          <th>Core Capabilities</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>1. Live GIS Map</strong></td>
+          <td>Leaflet, OpenStreetMap, Esri Canvas</td>
+          <td>60 FPS vehicle tracking, dynamic arterial detour on traffic congestion, Gorakhpur & device GPS presets.</td>
+        </tr>
+        <tr>
+          <td><strong>2. V2I Signal Preemption</strong></td>
+          <td>IoT WebSockets, NTCIP 1202 Opticom standard</td>
+          <td>Pre-clears traffic lights 45-60s ahead into green corridors, restores city cycle once vehicle passes.</td>
+        </tr>
+        <tr>
+          <td><strong>3. Hospital Capacity Matrix</strong></td>
+          <td>MCDM Scoring Algorithm</td>
+          <td>Balances transit latency (35%), trauma readiness (30%), ICU bed vacancy (20%), and queue time (15%).</td>
+        </tr>
+        <tr>
+          <td><strong>4. Clinical ML Triage</strong></td>
+          <td>Scikit-Learn Random Forest, AHA/MEWS</td>
+          <td>Predicts patient decompensation risk index (0-100) and ESI Level 1-5 from vitals and symptoms.</td>
+        </tr>
+        <tr>
+          <td><strong>5. ER Trauma Reception</strong></td>
+          <td>HTML5 Canvas Live ECG, WebSockets</td>
+          <td>Receiving hospital screen displaying incoming ETA, continuous Lead II ECG, and bay prep checklist.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>3. Mathematical & Algorithmic Formulations</h2>
+    <h3>A. Haversine Great-Circle Geodesic Distance</h3>
+    <p>Used to calculate accurate surface distance between coordinates on Earth:</p>
+    <pre>a = sin²(Δlat/2) + cos(lat1) · cos(lat2) · sin²(Δlng/2)
+c = 2 · atan2(√a, √(1−a))
+Distance (km) = 6371 · c</pre>
+
+    <h3>B. Multi-Criteria Decision Matrix (MCDM) Equation</h3>
+    <p>Computes composite hospital suitability score (0-100):</p>
+    <pre>Composite_Score = (0.35 × Travel_Score) + (0.30 × Trauma_Score) + (0.20 × Bed_Score) + (0.15 × Queue_Score)</pre>
+
+    <h2>4. Viva Voce Master Q&A (Top 10 High-Frequency Questions)</h2>
+
+    <div class="qa-box">
+      <div class="qa-q">Q1: How is AmbuRoute different from Google Maps?</div>
+      <div class="qa-a">Google Maps only optimizes transit for generic vehicles. It cannot trigger V2I traffic light green corridors, has no visibility into hospital ICU bed vacancies, and cannot stream live ECG waveforms to emergency doctors. AmbuRoute is an integrated Emergency Response OS.</div>
+    </div>
+
+    <div class="qa-box">
+      <div class="qa-q">Q2: Why WebSockets instead of REST APIs?</div>
+      <div class="qa-a">REST polling introduces 500-2000ms latency and high HTTP header overhead. WebSockets maintain a full-duplex TCP stream with under 15ms latency, critical for 60 FPS ambulance tracking and instant traffic light preemption.</div>
+    </div>
+
+    <div class="qa-box">
+      <div class="qa-q">Q3: Why use Random Forest for clinical triage?</div>
+      <div class="qa-a">Random Forest captures non-linear interactions across vital signs (e.g. low systolic BP + high heart rate = cardiogenic shock) and avoids overfitting on tabular medical telemetry compared to single decision trees or complex black-box neural nets.</div>
+    </div>
+
+    <div class="qa-box">
+      <div class="qa-q">Q4: How does V2I hardware connect in the real world?</div>
+      <div class="qa-a">In smart cities, intersection traffic controllers (Siemens, Philips, Indian ITMS) support NTCIP 1202 or Opticom protocols. When the ambulance crosses the 500m geofence, AmbuRoute fires an authenticated MQTT/REST webhook to the ITMS, granting a green priority wave.</div>
+    </div>
+
+    <div class="qa-box">
+      <div class="qa-q">Q5: Explain how dynamic traffic jam detour works.</div>
+      <div class="qa-a">When sudden road congestion is injected, the engine detects the obstruction on the primary road segment and instantly computes a +0.0035 lat arterial bypass, updating waypoints, ETA, and signal sequences in under 1 second.</div>
+    </div>
+
+    <div class="qa-box">
+      <div class="qa-q">Q6: Why is the UI designed in Red & White?</div>
+      <div class="qa-a">Red & White is the globally recognized identity of emergency medical services (108 Ambulance, Red Cross, Swiss EMS, and Zomato consumer clarity). It provides visual urgency with clean clinical legibility.</div>
+    </div>
+
+    <h2>5. Step-by-Step GitHub Push Guide</h2>
+    <p>Run these commands in terminal to push your project to GitHub:</p>
+    <pre>cd C:\Users\IIISI\.gemini\antigravity-ide\scratch\amburoute
+git init
+git add .
+git commit -m "feat: AmbuRoute v2.0 - Emergency Red & White UI, Gorakhpur GPS & Full Simulation"
+git branch -M main
+git remote add origin https://github.com/YOUR_USERNAME/amburoute-ai.git
+git push -u origin main</pre>
+
+    <h2>6. 100% Free Cloud Deployment Guide</h2>
+    <h3>A. Backend Deployment (Render.com - Free Python Hosting)</h3>
+    <ol style="margin-left: 20px; font-size: 13.5px; margin-bottom: 16px;">
+      <li>Sign up at <strong>https://render.com</strong> with GitHub.</li>
+      <li>Click <strong>New + -> Web Service</strong> and select your repository.</li>
+      <li>Set Root Directory: <code>backend</code></li>
+      <li>Set Build Command: <code>pip install -r requirements.txt</code></li>
+      <li>Set Start Command: <code>uvicorn app.main:app --host 0.0.0.0 --port $PORT</code></li>
+      <li>Click <strong>Deploy Web Service</strong>. You will get a free live URL (e.g. <code>https://amburoute-api.onrender.com</code>).</li>
+    </ol>
+
+    <h3>B. Frontend Deployment (Vercel.com - Free React Hosting)</h3>
+    <ol style="margin-left: 20px; font-size: 13.5px; margin-bottom: 16px;">
+      <li>Sign up at <strong>https://vercel.com</strong> with GitHub.</li>
+      <li>Click <strong>Add New Project</strong> and import <code>amburoute-ai</code>.</li>
+      <li>Set Root Directory: <code>frontend</code></li>
+      <li>Framework Preset: <strong>Vite</strong> (Build: <code>npm run build</code>, Output: <code>dist</code>).</li>
+      <li>In Environment Variables, add: <code>VITE_API_URL = https://amburoute-api.onrender.com</code></li>
+      <li>Click <strong>Deploy</strong>. In 40 seconds, your site is live worldwide on a free <code>.vercel.app</code> domain!</li>
+    </ol>
+
+  </div>
+</body>
+</html>

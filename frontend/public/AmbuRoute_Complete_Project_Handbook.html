@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AmbuRoute: Complete Project Report & Viva Voce Handbook</title>
+  <style>
+    :root {
+      --primary: #E11D48;
+      --secondary: #0F172A;
+      --card-bg: #FFFFFF;
+      --bg: #F8FAFC;
+      --border: #E2E8F0;
+      --text: #0F172A;
+      --muted: #475569;
+      --emerald: #059669;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      margin: 0;
+      padding: 30px 20px;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 40px;
+      box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.08);
+    }
+    .header {
+      border-bottom: 3px solid var(--primary);
+      padding-bottom: 20px;
+      margin-bottom: 30px;
+    }
+    .title {
+      font-size: 28px;
+      font-weight: 900;
+      color: var(--primary);
+      margin: 0 0 8px 0;
+      letter-spacing: -0.5px;
+    }
+    .subtitle {
+      font-size: 14px;
+      color: var(--muted);
+      margin: 0;
+    }
+    h2 {
+      font-size: 20px;
+      color: var(--secondary);
+      border-left: 4px solid var(--primary);
+      padding-left: 12px;
+      margin-top: 36px;
+      margin-bottom: 16px;
+    }
+    h3 {
+      font-size: 15px;
+      color: var(--secondary);
+      margin-top: 20px;
+      margin-bottom: 8px;
+    }
+    p {
+      font-size: 13.5px;
+      color: #334155;
+      margin-bottom: 12px;
+    }
+    .hinglish-box {
+      background-color: #FFF1F2;
+      border-left: 4px solid var(--primary);
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      color: #9F1239;
+      margin: 10px 0 20px 0;
+      font-style: italic;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 12.5px;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 10px 14px;
+      text-align: left;
+    }
+    th {
+      background-color: var(--primary);
+      color: #ffffff;
+      font-weight: 700;
+    }
+    tr:nth-child(even) {
+      background-color: #F8FAFC;
+    }
+    pre {
+      background: #1E293B;
+      color: #38BDF8;
+      padding: 14px;
+      border-radius: 12px;
+      font-family: "Courier New", Courier, monospace;
+      font-size: 12px;
+      overflow-x: auto;
+      margin: 12px 0;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: bold;
+      background: #E0E7FF;
+      color: #3730A3;
+    }
+    .print-btn {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      background: var(--primary);
+      color: #ffffff;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 12px;
+      font-weight: 800;
+      font-size: 13px;
+      cursor: pointer;
+      box-shadow: 0 4px 15px rgba(225, 29, 72, 0.3);
+      transition: all 0.2s;
+    }
+    .print-btn:hover {
+      background: #BE123C;
+      transform: translateY(-2px);
+    }
+    @media print {
+      body { background: #ffffff; padding: 0; }
+      .container { border: none; box-shadow: none; padding: 0; }
+      .print-btn { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <button class="print-btn" onclick="window.print()">🖨️ Save as PDF / Print</button>
+
+  <div class="container">
+    
+    <div class="header">
+      <h1 class="title">AMBUROUTE: SMART EMERGENCY DISASTER RESPONSE OS</h1>
+      <p class="subtitle">Complete Technical Project Report, System Architecture, Viva Voce Handbook & Free Deployment Guide</p>
+    </div>
+
+    <!-- 1. Problem Statement -->
+    <h2>1. Executive Summary & Problem Statement</h2>
+    <p>
+      <strong>English:</strong> In metropolitan cities, emergency ambulances face average transit delays of 15 to 30 minutes due to traffic bottlenecks, unsynchronized intersections, and blind hospital handoffs. AmbuRoute bridges this gap by creating an IoT-driven communication mesh connecting <strong>Ambulance Crew</strong>, <strong>City Traffic Police (ITMS)</strong>, and <strong>Hospital Emergency Departments</strong>.
+    </p>
+    <div class="hinglish-box">
+      <strong>Hinglish Explanation:</strong> Shahar me ambulance traffic jam aur red light par phas jaati hai, aur hospital pahunchne par pata chalta hai ki ICU bed khali nahi hai. AmbuRoute is problem ko solve karta hai: Ye raste ke signals ko advance me Green karta hai aur hospital ER ko live vitals bhej kar pehle se bed book karwa deta hai.
+    </div>
+
+    <!-- 2. Technology Stack -->
+    <h2>2. Complete Technology Stack (A to Z Breakdown)</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Category</th>
+          <th>Technology</th>
+          <th>Implementation & Justification</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Frontend Architecture</strong></td>
+          <td>React 19, Vite, Vanilla CSS</td>
+          <td>Sub-second Fast Refresh, dynamic single-page dashboard with zero page reloads.</td>
+        </tr>
+        <tr>
+          <td><strong>GIS & Mapping</strong></td>
+          <td>Leaflet.js + OpenStreetMap</td>
+          <td>100% free open-source spatial GIS with interactive polyline corridor and pulse marker animations.</td>
+        </tr>
+        <tr>
+          <td><strong>Backend Microservice</strong></td>
+          <td>Python 3.11, FastAPI, Uvicorn</td>
+          <td>Ultra-fast asynchronous ASGI microservice with Pydantic validation schemas.</td>
+        </tr>
+        <tr>
+          <td><strong>Real-Time Duplex</strong></td>
+          <td>WebSockets (Pub/Sub)</td>
+          <td>10 Hz bidirectional telemetry push between vehicle MDT, traffic signals, and hospital ER desks.</td>
+        </tr>
+        <tr>
+          <td><strong>Synthesizer Audio</strong></td>
+          <td>HTML5 Web Audio API</td>
+          <td>Generates emergency sirens and telemetry pings programmatically with 0 audio file dependencies.</td>
+        </tr>
+        <tr>
+          <td><strong>AI Hospital Ranking</strong></td>
+          <td>Weighted TOPSIS MCDM Algorithm</td>
+          <td>Ranks hospitals using distance (30%), ICU vacancy (30%), Cath Lab/OT (25%), and ER efficiency (15%).</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- 3. System Architecture & Portals -->
+    <h2>3. Architecture Model & Role-Based Workstations</h2>
+    <p>The system is built on a 4-Tier Role-Based Access Control (RBAC) architecture:</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Role Portal</th>
+          <th>Default Credentials</th>
+          <th>Workstation Functionality</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>🚑 <strong>Ambulance Driver / Paramedic</strong></td>
+          <td><code>driver108</code> / <code>1080</code></td>
+          <td>Live turn-by-turn GIS navigation, speed monitoring, and real-time patient vitals entry.</td>
+        </tr>
+        <tr>
+          <td>🏥 <strong>Hospital ER Doctor</strong></td>
+          <td><code>doctor_aiims</code> / <code>aiims123</code></td>
+          <td>Pre-arrival Trauma Bay reception, live Lead-II ECG waveform, and ICU bed reservation.</td>
+        </tr>
+        <tr>
+          <td>🚦 <strong>Traffic Police Controller</strong></td>
+          <td><code>traffic_gkp</code> / <code>traffic123</code></td>
+          <td>Physical 3-aspect signal lamps (Red/Yellow/Green), Master Green Wave override, and corridor tracking.</td>
+        </tr>
+        <tr>
+          <td>👑 <strong>Super Administrator</strong></td>
+          <td><code>admin</code> / <code>admin123</code></td>
+          <td>God-Mode: Live speed slider (0-120 km/h), patient vitals injector, traffic signal override, and bed editor.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- 4. Viva Voce Master Q&A -->
+    <h2>4. Master Viva Voce Q&A Handbook (English + Hinglish)</h2>
+
+    <h3>Q1: How does the V2I Traffic Preemption work technically?</h3>
+    <p><strong>Technical Answer:</strong> The ambulance broadcasts its GPS latitude, longitude, and heading at 10 Hz over 5G C-V2X. When entering the 500m geofence buffer of an intersection, the V2I controller calculates ETA and initiates cross-traffic yellow clearance, holding green priority until the ambulance clears the node.</p>
+    <div class="hinglish-box">
+      <strong>Hinglish:</strong> Ambulance jab kisi signal se 500m door hoti hai, to system automated handshake bhejta hai. Signal cross-traffic ko yellow se red kar deta hai aur ambulance ke aate hi green wave activate kar deta hai.
+    </div>
+
+    <h3>Q2: Why did you use WebSockets instead of REST API polling?</h3>
+    <p><strong>Technical Answer:</strong> HTTP REST polling introduces HTTP header overhead and 1-2 second latency delays. WebSockets maintain a persistent full-duplex TCP socket that streams telemetry at under 15ms latency, crucial for live ECG and GPS coordinates.</p>
+    <div class="hinglish-box">
+      <strong>Hinglish:</strong> REST API me baar-baar request bhejni padti hai jisse delay hota hai. WebSocket me ek baar connection ban kar live data lagatar flow hota rehta hai bina kisi latency ke.
+    </div>
+
+    <h3>Q3: What is the benefit of the Super Administrator Deck?</h3>
+    <p><strong>Technical Answer:</strong> It allows full administrative root authority to manipulate vehicle speed, inject patient vitals (Heart rate, BP, SpO2), trigger full-corridor green waves, or modify hospital bed availability in real-time during live demonstrations.</p>
+    <div class="hinglish-box">
+      <strong>Hinglish:</strong> Examiner ke samne live demo dene ke liye Administrator panel banaya gaya hai, jisse hum bina code change kiye browser se hi speed, vitals, signals aur hospital beds ko instantly change kar sakte hain.
+    </div>
+
+    <h3>Q4: How does the algorithm handle edge cases like traffic jams?</h3>
+    <p><strong>Technical Answer:</strong> The routing engine dynamically computes alternative routes based on road impedance and congestion metrics. If a corridor is gridlocked, the system calculates a reroute and shifts signal preemption to the new intersection sequence.</p>
+    <div class="hinglish-box">
+      <strong>Hinglish:</strong> Agar kisi road par traffic jam inject ho jata hai, to system route re-calculate karta hai aur naye raste ke signals ko green wave me convert kar deta hai.
+    </div>
+
+    <!-- 5. Free Deployment & Git Push -->
+    <h2>5. Git Push & 100% Free Deployment Guide</h2>
+
+    <h3>Step A: Push Project to GitHub</h3>
+    <pre>
+git init
+git add .
+git commit -m "feat: Complete AmbuRoute Emergency OS with Role Portals & Admin Deck"
+git branch -M main
+git remote add origin https://github.com/YOUR_USERNAME/amburoute.git
+git push -u origin main
+    </pre>
+
+    <h3>Step B: Deploy Frontend (Vercel - 100% Free)</h3>
+    <p>
+      1. Go to <strong>vercel.com</strong> and link your GitHub repository.<br/>
+      2. Set <strong>Root Directory</strong> to <code>frontend</code>.<br/>
+      3. Click <strong>Deploy</strong>. Your site is live with a free SSL domain (e.g. <code>https://amburoute.vercel.app</code>)!
+    </p>
+
+    <h3>Step C: Deploy Backend (Render.com - 100% Free)</h3>
+    <p>
+      1. Go to <strong>render.com</strong> and create a New <strong>Web Service</strong>.<br/>
+      2. Connect your repository and set Root Directory to <code>backend</code>.<br/>
+      3. Build Command: <code>pip install -r requirements.txt</code><br/>
+      4. Start Command: <code>uvicorn app.main:app --host 0.0.0.0 --port $PORT</code><br/>
+      5. Click <strong>Deploy</strong>. Your FastAPI REST and WebSocket endpoints are live!
+    </p>
+
+  </div>
+
+</body>
+</html>

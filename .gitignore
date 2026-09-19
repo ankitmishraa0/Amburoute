@@ -1,0 +1,16 @@
+# Dependencies
+frontend/node_modules/
+backend/__pycache__/
+*.pyc
+*.pyo
+
+# Build artifacts
+frontend/dist/
+frontend/.vite/
+
+# System and IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
