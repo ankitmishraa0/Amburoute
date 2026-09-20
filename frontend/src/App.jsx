@@ -129,9 +129,33 @@ export default function App() {
     try { soundFx?.playClick?.(); } catch (e) {}
   };
 
+  // Strict Role-Based View Enforcer (RBAC Isolation)
+  useEffect(() => {
+    if (!currentUser) return;
+    const roleKey = currentUser?.role || currentUser?.id || 'driver';
+
+    const allowedTabsByRole = {
+      driver: ['command_map', 'hospitals'],
+      traffic: ['signals'],
+      hospital: ['handoff', 'triage', 'hospitals'],
+      admin: ['command_map', 'signals', 'hospitals', 'triage', 'handoff', 'admin_panel']
+    };
+
+    const defaultTabByRole = {
+      driver: 'command_map',
+      traffic: 'signals',
+      hospital: 'handoff',
+      admin: 'admin_panel'
+    };
+
+    const allowed = allowedTabsByRole[roleKey] || allowedTabsByRole.driver;
+    if (!allowed.includes(activeTab)) {
+      setActiveTab(defaultTabByRole[roleKey] || 'command_map');
+    }
+  }, [currentUser, activeTab]);
+
   const handleSelectRole = (role) => {
     setCurrentRole(role);
-    // Sync with currentUser
     const mappedUser = Object.values(USER_ROLES).find(u => u.id === role.id || u.id === role.role) || USER_ROLES.driver;
     setCurrentUser({ ...mappedUser, ...role });
     if (role.assignedTab) {
@@ -141,9 +165,18 @@ export default function App() {
 
   const handleLogin = (userRole) => {
     setCurrentUser(userRole);
-    const matchedRole = PORTAL_ROLES.find(r => r.id === userRole.role || r.id === userRole.id) || PORTAL_ROLES[0];
+    const roleKey = userRole.role || userRole.id || 'driver';
+    const matchedRole = PORTAL_ROLES.find(r => r.id === roleKey) || PORTAL_ROLES[0];
     setCurrentRole({ ...matchedRole, ...userRole });
-    const targetTab = userRole.assignedTab || userRole.defaultTab || matchedRole.assignedTab || 'command_map';
+
+    const defaultTabByRole = {
+      driver: 'command_map',
+      traffic: 'signals',
+      hospital: 'handoff',
+      admin: 'admin_panel'
+    };
+
+    const targetTab = userRole.assignedTab || userRole.defaultTab || defaultTabByRole[roleKey] || 'command_map';
     setActiveTab(targetTab);
   };
 
@@ -356,20 +389,26 @@ export default function App() {
       {/* Main Module Content Area */}
       <main className="flex-1 max-w-[1780px] w-full mx-auto p-4 sm:p-6 space-y-6">
         
-        {/* Active Operational Portal Notification / Quick Switch Bar */}
+        {/* Active Operational Portal Notification / Role Mode Bar */}
         <div className={`px-4 py-2.5 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs transition-all ${
-          currentRole?.id === 'hospital' 
-            ? 'bg-blue-50/80 border-blue-200 text-blue-950' 
-            : currentRole?.id === 'traffic'
+          (currentUser?.role === 'admin' || currentUser?.id === 'admin')
+            ? 'bg-amber-50/80 border-amber-200 text-amber-950'
+            : (currentUser?.role === 'hospital' || currentUser?.id === 'hospital')
+            ? 'bg-blue-50/80 border-blue-200 text-blue-950'
+            : (currentUser?.role === 'traffic' || currentUser?.id === 'traffic')
             ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950'
             : 'bg-rose-50/80 border-rose-200 text-rose-950'
         }`}>
           <div className="flex items-center space-x-3">
             <div className={`p-2 rounded-xl text-white shrink-0 text-base shadow-xs ${
-              currentRole?.id === 'hospital' ? 'bg-blue-600' :
-              currentRole?.id === 'traffic' ? 'bg-emerald-600' : 'bg-rose-600'
+              (currentUser?.role === 'admin' || currentUser?.id === 'admin') ? 'bg-amber-600' :
+              (currentUser?.role === 'hospital' || currentUser?.id === 'hospital') ? 'bg-blue-600' :
+              (currentUser?.role === 'traffic' || currentUser?.id === 'traffic') ? 'bg-emerald-600' :
+              'bg-rose-600'
             }`}>
-              {currentRole?.id === 'hospital' ? '🏥' : currentRole?.id === 'traffic' ? '🚦' : '🚑'}
+              {(currentUser?.role === 'admin' || currentUser?.id === 'admin') ? '👑' :
+               (currentUser?.role === 'hospital' || currentUser?.id === 'hospital') ? '🏥' :
+               (currentUser?.role === 'traffic' || currentUser?.id === 'traffic') ? '🚦' : '🚑'}
             </div>
             <div>
               <div className="flex items-center space-x-2">
@@ -377,22 +416,34 @@ export default function App() {
                   {currentRole?.name}
                 </span>
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-white border border-current/20 font-bold">
-                  {currentRole?.badge}
+                  {currentUser?.badge || currentRole?.badge}
+                </span>
+                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-slate-900 text-white">
+                  {(currentUser?.role === 'admin' || currentUser?.id === 'admin') ? 'ROOT ACCESS (ALL SCREENS)' : 'ROLE-DEDICATED WORKSPACE'}
                 </span>
               </div>
               <p className="text-xs text-slate-600 font-medium">
-                Active Operator: <strong className="text-slate-900">{currentRole?.userTitle}</strong> • {currentRole?.desc}
+                Active Operator: <strong className="text-slate-900">{currentUser?.name || currentRole?.userTitle}</strong> • {currentRole?.desc}
               </p>
             </div>
           </div>
 
           <div className="flex items-center space-x-2 shrink-0 self-end sm:self-auto">
-            <button
-              onClick={() => setIsRoleModalOpen(true)}
-              className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 text-xs font-black transition-all shadow-xs cursor-pointer flex items-center space-x-1.5"
-            >
-              <span>🔑 Switch Role / Login</span>
-            </button>
+            {(currentUser?.role === 'admin' || currentUser?.id === 'admin') ? (
+              <button
+                onClick={() => setIsRoleModalOpen(true)}
+                className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 text-xs font-black transition-all shadow-xs cursor-pointer flex items-center space-x-1.5"
+              >
+                <span>👑 Admin View Switcher</span>
+              </button>
+            ) : (
+              <button
+                onClick={handleLogout}
+                className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-300 text-rose-700 text-xs font-black transition-all shadow-xs cursor-pointer flex items-center space-x-1.5"
+              >
+                <span>🚪 Switch Role / Logout</span>
+              </button>
+            )}
           </div>
         </div>
 

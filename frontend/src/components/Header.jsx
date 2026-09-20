@@ -53,24 +53,23 @@ export default function Header({
     if (!muted) soundFx.playClick();
   };
 
-  // Clean, professional navigation tabs (Red & White Emergency Theme)
-  const navItems = [
-    { id: 'command_map', icon: Navigation, label: 'Live Dispatch Map', sub: 'Real-Time GPS' },
-    { id: 'signals', icon: Signal, label: 'Traffic Preemption', sub: 'Green Wave Corridor' },
-    { id: 'hospitals', icon: Building2, label: 'Hospital Directory', sub: 'AI Match & Beds' },
-    { id: 'triage', icon: Stethoscope, label: 'Clinical Triage', sub: 'Patient Risk AI' },
-    { id: 'handoff', icon: HeartPulse, label: 'ER Trauma Bay', sub: 'Hospital Screen' },
+  // Role-Specific Interface Filter (RBAC View Restriction):
+  // - Ambulance Driver: ONLY sees Live Dispatch Map & Hospital Bed Directory
+  // - Traffic Police (ITMS/TCS): ONLY sees Traffic Preemption & Green Wave
+  // - Hospital ER Staff: ONLY sees ER Trauma Bay, Clinical Triage & Beds
+  // - Super Admin: Sees EVERYTHING (Full System Root Control across all modules)
+  const role = currentUser?.role || currentUser?.id || 'driver';
+
+  const allNavItems = [
+    { id: 'command_map', icon: Navigation, label: 'Live Dispatch Map', sub: 'Ambulance GPS', roles: ['driver', 'admin'] },
+    { id: 'signals', icon: Signal, label: 'Traffic Preemption', sub: 'Green Wave ITMS', roles: ['traffic', 'admin'] },
+    { id: 'handoff', icon: HeartPulse, label: 'ER Trauma Bay', sub: 'Hospital Screen', roles: ['hospital', 'admin'] },
+    { id: 'triage', icon: Stethoscope, label: 'Clinical Triage', sub: 'Patient Risk AI', roles: ['hospital', 'admin'] },
+    { id: 'hospitals', icon: Building2, label: 'Hospital Directory', sub: 'AI Match & Beds', roles: ['driver', 'hospital', 'admin'] },
+    { id: 'admin_panel', icon: Crown, label: 'Super Admin Deck', sub: 'Root Control Mode', roles: ['admin'] },
   ];
 
-  // If Admin is logged in or user has admin role, show Super Admin Deck
-  if (currentUser?.role === 'admin' || currentUser?.id === 'admin') {
-    navItems.push({
-      id: 'admin_panel',
-      icon: Crown,
-      label: 'Super Admin Deck',
-      sub: 'Root Control Mode'
-    });
-  }
+  const navItems = allNavItems.filter(item => item.roles.includes(role));
 
   return (
     <header className="border-b border-slate-200 bg-white/98 backdrop-blur-md sticky top-0 z-30 shadow-xs transition-colors duration-200">
