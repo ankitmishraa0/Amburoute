@@ -30,7 +30,12 @@ import {
   Eye,
   EyeOff,
   Navigation,
-  Shield
+  Shield,
+  Bell,
+  Check,
+  Ban,
+  Clock,
+  Send
 } from 'lucide-react';
 import { soundFx } from '../services/sound';
 import { userService } from '../services/userService';
@@ -42,7 +47,7 @@ export default function AdminControlPanel({
   setHospitals, 
   onSelectScenario 
 }) {
-  // Navigation sub-tab: 'telemetry' | 'users'
+  // Navigation sub-tab: 'telemetry' | 'users' | 'requests'
   const [activeSubTab, setActiveSubTab] = useState('telemetry');
 
   // Telemetry Controls State
@@ -63,6 +68,12 @@ export default function AdminControlPanel({
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
 
+  // Password Reset & Access Requests State
+  const [requestsList, setRequestsList] = useState([]);
+  const [requestFilter, setRequestFilter] = useState('all'); // 'all' | 'pending' | 'approved' | 'rejected'
+  const [approvingRequest, setApprovingRequest] = useState(null);
+  const [approvedPassInput, setApprovedPassInput] = useState('');
+
   // Create User Form State
   const [formData, setFormData] = useState({
     name: '',
@@ -77,12 +88,14 @@ export default function AdminControlPanel({
   const [showPasswordMap, setShowPasswordMap] = useState({});
 
   useEffect(() => {
-    loadUsers();
+    loadData();
   }, []);
 
-  const loadUsers = () => {
+  const loadData = () => {
     const list = userService.getUsers();
     setUsersList(list);
+    const reqs = userService.getResetRequests();
+    setRequestsList(reqs);
   };
 
   const showToast = (msg) => {
@@ -90,6 +103,8 @@ export default function AdminControlPanel({
     soundFx.playSuccess();
     setTimeout(() => setToastMsg(null), 3500);
   };
+
+  const pendingRequestsCount = requestsList.filter(r => r.status === 'pending').length;
 
   // 1. Apply Ambulance & Patient Changes in Real-Time
   const handleApplyVitals = (e) => {
@@ -217,7 +232,6 @@ export default function AdminControlPanel({
 
     try {
       if (editingUser) {
-        // Update existing user
         userService.updateUser(editingUser.username || editingUser.id, {
           name: formData.name,
           role: formData.role,
@@ -228,11 +242,10 @@ export default function AdminControlPanel({
         });
         showToast(`User '${editingUser.username}' successfully updated.`);
       } else {
-        // Create new user / driver ID
         const created = userService.createUser(formData);
         showToast(`New Operator ID '${created.username}' registered successfully!`);
       }
-      loadUsers();
+      loadData();
       setIsCreateModalOpen(false);
     } catch (err) {
       soundFx.playCriticalAlert();
@@ -245,7 +258,7 @@ export default function AdminControlPanel({
     try {
       const nextStatus = currentStatus === 'active' ? 'suspended' : 'active';
       userService.updateUser(username, { status: nextStatus });
-      loadUsers();
+      loadData();
       showToast(`User '${username}' is now ${nextStatus.toUpperCase()}.`);
     } catch (err) {
       soundFx.playCriticalAlert();
@@ -260,7 +273,7 @@ export default function AdminControlPanel({
     soundFx.playClick();
     try {
       userService.deleteUser(username);
-      loadUsers();
+      loadData();
       showToast(`User ID '${username}' deleted.`);
     } catch (err) {
       soundFx.playCriticalAlert();
@@ -274,7 +287,7 @@ export default function AdminControlPanel({
     }
     soundFx.playClick();
     userService.resetToDefaults();
-    loadUsers();
+    loadData();
     showToast('User accounts reset to system defaults.');
   };
 
@@ -283,6 +296,44 @@ export default function AdminControlPanel({
       ...prev,
       [username]: !prev[username]
     }));
+  };
+
+  // --- PASSWORD RESET & ACCESS REQUESTS HANDLERS ---
+  const handleOpenApproveModal = (req) => {
+    setApprovingRequest(req);
+    setApprovedPassInput(req.requestedPassword || '');
+    soundFx.playClick();
+  };
+
+  const handleConfirmApproval = (e) => {
+    e?.preventDefault();
+    if (!approvingRequest) return;
+    soundFx.playClick();
+
+    try {
+      userService.approveResetRequest(approvingRequest.id, approvedPassInput);
+      loadData();
+      setApprovingRequest(null);
+      showToast(`Request #${approvingRequest.id} Approved! Password updated for ${approvingRequest.username}.`);
+    } catch (err) {
+      soundFx.playCriticalAlert();
+      showToast(`Error approving request: ${err.message}`);
+    }
+  };
+
+  const handleRejectRequest = (req) => {
+    const reason = window.prompt(`Reject request #${req.id} for operator '${req.username}'? Enter rejection reason:`, 'Identity verification failed.');
+    if (reason === null) return;
+
+    soundFx.playClick();
+    try {
+      userService.rejectResetRequest(req.id, reason);
+      loadData();
+      showToast(`Request #${req.id} rejected.`);
+    } catch (err) {
+      soundFx.playCriticalAlert();
+      showToast(`Error: ${err.message}`);
+    }
   };
 
   // Filtered users
@@ -294,6 +345,12 @@ export default function AdminControlPanel({
       (u.badge || '').toLowerCase().includes(query);
     const matchRole = roleFilter === 'all' || u.role === roleFilter;
     return matchSearch && matchRole;
+  });
+
+  // Filtered requests
+  const filteredRequests = requestsList.filter(r => {
+    if (requestFilter === 'all') return true;
+    return r.status === requestFilter;
   });
 
   const getRoleTheme = (role) => {
@@ -328,7 +385,7 @@ export default function AdminControlPanel({
               </span>
             </div>
             <p className="text-amber-100 text-xs sm:text-sm mt-0.5 max-w-xl">
-              Manage multi-driver accounts, create login IDs, manipulate speeds, inject patient vitals, and override city signals.
+              Manage multi-driver accounts, approve password reset requests, manipulate speeds, inject vitals, and override city signals.
             </p>
           </div>
         </div>
@@ -360,13 +417,13 @@ export default function AdminControlPanel({
 
       {/* SUB-NAVIGATION TABS */}
       <div className="flex flex-wrap items-center justify-between gap-3 bg-white border border-slate-200 rounded-2xl p-2 shadow-xs">
-        <div className="flex items-center space-x-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => {
               setActiveSubTab('telemetry');
               soundFx.playClick();
             }}
-            className={`flex items-center space-x-2 px-5 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
+            className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
               activeSubTab === 'telemetry'
                 ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
@@ -381,19 +438,39 @@ export default function AdminControlPanel({
               setActiveSubTab('users');
               soundFx.playClick();
             }}
-            className={`flex items-center space-x-2 px-5 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
+            className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
               activeSubTab === 'users'
                 ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20'
                 : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
             }`}
           >
             <Users className="w-4 h-4" />
-            <span>👥 Operator & Driver ID Management</span>
+            <span>👥 Operator & Driver Directory</span>
             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
               activeSubTab === 'users' ? 'bg-white text-amber-900' : 'bg-slate-100 text-slate-700'
             }`}>
-              {usersList.length} Accounts
+              {usersList.length}
             </span>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveSubTab('requests');
+              soundFx.playClick();
+            }}
+            className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl font-black text-xs transition-all cursor-pointer ${
+              activeSubTab === 'requests'
+                ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+          >
+            <Bell className="w-4 h-4" />
+            <span>🔔 Access & Password Requests</span>
+            {pendingRequestsCount > 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-rose-600 text-white text-[10px] font-black animate-pulse">
+                {pendingRequestsCount} Pending
+              </span>
+            )}
           </button>
         </div>
 
@@ -588,7 +665,145 @@ export default function AdminControlPanel({
         </div>
       )}
 
-      {/* VIEW 2: TELEMETRY & SYSTEM GRIDS (EXISTING) */}
+      {/* VIEW 2: ACCESS & PASSWORD RESET REQUESTS */}
+      {activeSubTab === 'requests' && (
+        <div className="space-y-5">
+          {/* Header & Filter */}
+          <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              <h3 className="font-black text-slate-900 text-base">Operator Password Reset & ID Recovery Requests</h3>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Review identity verification and approve or reject requested new credentials.
+              </p>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              {[
+                { id: 'all', label: 'All' },
+                { id: 'pending', label: 'Pending' },
+                { id: 'approved', label: 'Approved' },
+                { id: 'rejected', label: 'Rejected' }
+              ].map(f => (
+                <button
+                  key={f.id}
+                  onClick={() => {
+                    setRequestFilter(f.id);
+                    soundFx.playClick();
+                  }}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    requestFilter === f.id
+                      ? 'bg-slate-900 text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Requests Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {filteredRequests.map((req) => {
+              const roleMeta = getRoleTheme(req.role);
+              const RoleIcon = roleMeta.icon;
+
+              return (
+                <div 
+                  key={req.id} 
+                  className={`bg-white border rounded-3xl p-5 shadow-sm space-y-4 transition-all ${
+                    req.status === 'pending' ? 'border-amber-300 ring-2 ring-amber-400/20' : 'border-slate-200'
+                  }`}
+                >
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <div className="flex items-center space-x-2.5">
+                      <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${roleMeta.color} text-white flex items-center justify-center shadow-xs`}>
+                        <RoleIcon className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="font-mono font-black text-xs text-slate-900 flex items-center space-x-2">
+                          <span>#{req.id}</span>
+                          <span className="text-slate-400">•</span>
+                          <span className="text-rose-600">{req.username}</span>
+                        </div>
+                        <div className="text-[10px] text-slate-400 font-medium">Submitted: {req.createdAt}</div>
+                      </div>
+                    </div>
+
+                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-mono font-black uppercase ${
+                      req.status === 'approved' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                      req.status === 'rejected' ? 'bg-rose-50 text-rose-700 border border-rose-200' :
+                      'bg-amber-50 text-amber-700 border border-amber-300 animate-pulse'
+                    }`}>
+                      ● {req.status.toUpperCase()}
+                    </span>
+                  </div>
+
+                  {/* Details */}
+                  <div className="space-y-2 text-xs">
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Operator Full Name:</span>
+                      <strong className="text-slate-800">{req.name}</strong>
+                    </div>
+
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Department / Role:</span>
+                      <strong className="text-slate-800">{req.department || req.role}</strong>
+                    </div>
+
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Contact / Reason:</span>
+                      <span className="text-slate-700 font-medium text-right max-w-[200px] truncate">{req.reason || req.contact}</span>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+                      <span className="text-slate-500 font-mono text-[11px]">Requested Password:</span>
+                      <code className="text-xs font-mono font-black text-slate-900">{req.requestedPassword}</code>
+                    </div>
+
+                    {req.adminNote && (
+                      <div className="p-2 rounded-xl bg-slate-100 text-[11px] text-slate-600 font-mono">
+                        Note: {req.adminNote}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Action Buttons for Pending */}
+                  {req.status === 'pending' && (
+                    <div className="pt-3 border-t border-slate-100 flex items-center justify-end space-x-2">
+                      <button
+                        onClick={() => handleRejectRequest(req)}
+                        className="px-3.5 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-black flex items-center space-x-1 cursor-pointer transition-colors"
+                      >
+                        <Ban className="w-3.5 h-3.5" />
+                        <span>Reject</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleOpenApproveModal(req)}
+                        className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md shadow-emerald-600/20 flex items-center space-x-1.5 cursor-pointer transition-colors"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Approve & Authorize Password</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {filteredRequests.length === 0 && (
+            <div className="text-center py-12 bg-white rounded-3xl border border-slate-200 p-6 space-y-2">
+              <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto" />
+              <div className="font-black text-slate-700">No Pending Requests</div>
+              <p className="text-xs text-slate-500">All operator password reset requests have been reviewed.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* VIEW 3: TELEMETRY & SYSTEM GRIDS (EXISTING) */}
       {activeSubTab === 'telemetry' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
@@ -830,8 +1045,6 @@ export default function AdminControlPanel({
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/65 backdrop-blur-xs overflow-y-auto">
           <div className="relative w-full max-w-lg bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200">
-            
-            {/* Modal Header */}
             <div className="bg-amber-500 text-white px-6 py-4 flex items-center justify-between">
               <div className="flex items-center space-x-2.5">
                 <div className="p-2 rounded-xl bg-white/20">
@@ -854,7 +1067,6 @@ export default function AdminControlPanel({
               </button>
             </div>
 
-            {/* Modal Form */}
             <form onSubmit={handleSaveUser} className="p-6 space-y-4" autoComplete="off">
               {formError && (
                 <div className="p-3 bg-rose-50 border border-rose-300 rounded-xl text-rose-800 text-xs font-bold flex items-center space-x-2">
@@ -863,7 +1075,6 @@ export default function AdminControlPanel({
                 </div>
               )}
 
-              {/* Department / Role Selector */}
               <div>
                 <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1.5">
                   Department / Operational Role
@@ -905,7 +1116,6 @@ export default function AdminControlPanel({
                 </div>
               </div>
 
-              {/* Full Name */}
               <div>
                 <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1">
                   Operator Full Name
@@ -920,7 +1130,6 @@ export default function AdminControlPanel({
                 />
               </div>
 
-              {/* Username & Password */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1">
@@ -954,7 +1163,6 @@ export default function AdminControlPanel({
                 </div>
               </div>
 
-              {/* Unit Badge / Hospital Name */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1">
@@ -984,7 +1192,6 @@ export default function AdminControlPanel({
                 </div>
               </div>
 
-              {/* Submit Buttons */}
               <div className="pt-3 border-t border-slate-100 flex items-center justify-end space-x-2">
                 <button
                   type="button"
@@ -1002,7 +1209,67 @@ export default function AdminControlPanel({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
 
+      {/* APPROVE PASSWORD RESET MODAL */}
+      {approvingRequest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/65 backdrop-blur-xs overflow-y-auto">
+          <div className="relative w-full max-w-md bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200">
+            <div className="bg-emerald-600 text-white px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <Check className="w-5 h-5 text-white" />
+                <h3 className="font-black text-base">Approve Password Reset</h3>
+              </div>
+              <button
+                onClick={() => setApprovingRequest(null)}
+                className="p-1 rounded-lg bg-white/20 text-white cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmApproval} className="p-6 space-y-4">
+              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-1.5 text-xs">
+                <div>Operator: <strong>{approvingRequest.name}</strong></div>
+                <div>Badge ID: <code className="text-rose-600 font-mono font-bold">{approvingRequest.username}</code></div>
+                <div>Department: <strong>{approvingRequest.department}</strong></div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1">
+                  Authorized New Password / PIN
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={approvedPassInput}
+                  onChange={(e) => setApprovedPassInput(e.target.value)}
+                  className="w-full p-2.5 border border-slate-300 rounded-xl text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-emerald-600"
+                />
+                <span className="text-[10px] text-slate-400 font-mono">
+                  You can keep the operator's requested password or override with your own.
+                </span>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setApprovingRequest(null)}
+                  className="px-4 py-2 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md cursor-pointer flex items-center space-x-1.5"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Authorize & Update Password</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

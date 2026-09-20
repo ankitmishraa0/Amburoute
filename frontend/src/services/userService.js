@@ -1,10 +1,12 @@
 /**
  * AmbuRoute User & Operator Management Service
  * Handles RBAC authentication, persistent user storage,
- * dynamic driver/operator account creation by Admin, and security validation.
+ * dynamic driver/operator account creation by Admin, self-registration,
+ * and Admin-approved password reset / account recovery workflow.
  */
 
 const STORAGE_KEY = 'amburoute_users_v2';
+const REQUESTS_STORAGE_KEY = 'amburoute_access_requests_v2';
 
 // Baseline system operator accounts
 export const DEFAULT_USERS = [
@@ -89,7 +91,6 @@ export const userService = {
   saveUsers: (users) => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(users));
-      // Optional async sync to backend if available
       try {
         fetch('http://127.0.0.1:8000/api/users/sync', {
           method: 'POST',
@@ -168,7 +169,7 @@ export const userService = {
   },
 
   /**
-   * Create a new User / Driver ID (Admin capability)
+   * Create a new User / Driver ID (Admin or Registration)
    */
   createUser: (userData) => {
     const users = userService.getUsers();
@@ -191,7 +192,6 @@ export const userService = {
       throw new Error(`A user with ID '${cleanUsername}' already exists. Please choose another Badge ID.`);
     }
 
-    // Assign default tab based on role
     const tabMap = {
       driver: 'command_map',
       hospital: 'handoff',
@@ -217,12 +217,26 @@ export const userService = {
       status: userData.status || 'active',
       assignedTab: tabMap[userData.role] || 'command_map',
       createdAt: new Date().toISOString().split('T')[0],
-      description: userData.description || `Operator ${userData.name.trim()} assigned to ${deptMap[userData.role] || 'duty'}.`
+      description: userData.description || `Registered operator ${userData.name.trim()} (${deptMap[userData.role] || 'duty'}).`
     };
 
     users.push(newUser);
     userService.saveUsers(users);
     return newUser;
+  },
+
+  /**
+   * Operator Self-Registration (Driver, Hospital ER, Traffic Police)
+   * Prohibits self-registering as Super Admin for security.
+   */
+  registerUser: (userData) => {
+    if (userData.role === 'admin') {
+      throw new Error('Self-registration as Master Administrator is strictly prohibited.');
+    }
+    return userService.createUser({
+      ...userData,
+      status: 'active'
+    });
   },
 
   /**
@@ -250,7 +264,7 @@ export const userService = {
     users[index] = {
       ...users[index],
       ...updatedData,
-      id: users[index].id, // keep immutable key
+      id: users[index].id,
       username: users[index].username
     };
 
@@ -259,7 +273,7 @@ export const userService = {
   },
 
   /**
-   * Delete a user account (Admin capability)
+   * Delete a user account
    */
   deleteUser: (username) => {
     const cleanUsername = (username || '').trim().toLowerCase();
@@ -284,5 +298,185 @@ export const userService = {
   resetToDefaults: () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_USERS));
     return [...DEFAULT_USERS];
+  },
+
+  // ==========================================
+  // FORGOT ID / PASSWORD & APPROVAL WORKFLOW
+  // ==========================================
+
+  /**
+   * Get all password reset / account recovery requests
+   */
+  getResetRequests: () => {
+    try {
+      const stored = localStorage.getItem(REQUESTS_STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {
+      console.warn('Failed to load reset requests', e);
+    }
+    return [];
+  },
+
+  /**
+   * Save requests to localStorage
+   */
+  saveResetRequests: (requests) => {
+    try {
+      localStorage.setItem(REQUESTS_STORAGE_KEY, JSON.stringify(requests));
+      return true;
+    } catch (e) {
+      console.error('Error saving reset requests', e);
+      return false;
+    }
+  },
+
+  /**
+   * Create a new Password Reset / ID Recovery Request
+   */
+  createResetRequest: ({ username, name, role, contact, requestedPassword, reason }) => {
+    const cleanUsername = (username || '').trim().toLowerCase();
+    const cleanName = (name || '').trim();
+    const cleanPass = (requestedPassword || '').trim();
+
+    if (!cleanUsername && !cleanName) {
+      throw new Error('Please provide your Username / Badge ID or Registered Full Name.');
+    }
+
+    if (!cleanPass || cleanPass.length < 4) {
+      throw new Error('Requested new password must be at least 4 characters long.');
+    }
+
+    // Check if user exists in the registry
+    const users = userService.getUsers();
+    const matchedUser = users.find(u => 
+      (cleanUsername && (u.username || u.id || '').toLowerCase() === cleanUsername) ||
+      (cleanName && (u.name || '').toLowerCase() === cleanName.toLowerCase())
+    );
+
+    const targetUsername = matchedUser ? (matchedUser.username || matchedUser.id) : cleanUsername;
+    const targetName = matchedUser ? matchedUser.name : cleanName;
+    const targetRole = matchedUser ? matchedUser.role : (role || 'driver');
+    const targetDepartment = matchedUser ? matchedUser.department : (role === 'hospital' ? 'Hospital ER' : role === 'traffic' ? 'Traffic Police' : 'Ambulance Unit');
+
+    const requests = userService.getResetRequests();
+    
+    // Check if a pending request already exists for this user
+    const existingPending = requests.find(r => 
+      r.username.toLowerCase() === targetUsername.toLowerCase() && r.status === 'pending'
+    );
+    if (existingPending) {
+      throw new Error(`A password reset request (#${existingPending.id}) is already pending Admin approval for ${targetUsername}.`);
+    }
+
+    const newRequest = {
+      id: `REQ-${Math.floor(1000 + Math.random() * 9000)}`,
+      username: targetUsername,
+      name: targetName,
+      role: targetRole,
+      department: targetDepartment,
+      contact: contact ? contact.trim() : 'N/A',
+      requestedPassword: cleanPass,
+      reason: reason ? reason.trim() : 'Operator requested password reset.',
+      status: 'pending', // 'pending' | 'approved' | 'rejected'
+      createdAt: new Date().toLocaleString(),
+      reviewedAt: null,
+      reviewedBy: null,
+      adminNote: null
+    };
+
+    requests.unshift(newRequest);
+    userService.saveResetRequests(requests);
+    return newRequest;
+  },
+
+  /**
+   * Approve a reset request and update the user's password in real-time
+   */
+  approveResetRequest: (requestId, approvedPassword = null) => {
+    const requests = userService.getResetRequests();
+    const index = requests.findIndex(r => r.id === requestId);
+
+    if (index === -1) {
+      throw new Error('Request not found.');
+    }
+
+    const req = requests[index];
+    const finalPassword = approvedPassword ? approvedPassword.trim() : req.requestedPassword;
+
+    if (!finalPassword || finalPassword.length < 4) {
+      throw new Error('Approved password must be at least 4 characters.');
+    }
+
+    // Update user password in users list
+    const users = userService.getUsers();
+    const userIndex = users.findIndex(u => (u.username || u.id || '').toLowerCase() === req.username.toLowerCase());
+
+    if (userIndex !== -1) {
+      users[userIndex].password = finalPassword;
+      users[userIndex].status = 'active'; // ensure account is active
+      userService.saveUsers(users);
+    } else {
+      // User might be new or not in list; create them if valid
+      userService.createUser({
+        username: req.username,
+        name: req.name,
+        password: finalPassword,
+        role: req.role,
+        department: req.department,
+        status: 'active'
+      });
+    }
+
+    requests[index] = {
+      ...req,
+      status: 'approved',
+      requestedPassword: finalPassword,
+      reviewedAt: new Date().toLocaleString(),
+      reviewedBy: 'Super Administrator',
+      adminNote: `Approved by Admin. Password updated successfully.`
+    };
+
+    userService.saveResetRequests(requests);
+    return requests[index];
+  },
+
+  /**
+   * Reject a password reset request
+   */
+  rejectResetRequest: (requestId, rejectReason = 'Declined by Administrator.') => {
+    const requests = userService.getResetRequests();
+    const index = requests.findIndex(r => r.id === requestId);
+
+    if (index === -1) {
+      throw new Error('Request not found.');
+    }
+
+    requests[index] = {
+      ...requests[index],
+      status: 'rejected',
+      reviewedAt: new Date().toLocaleString(),
+      reviewedBy: 'Super Administrator',
+      adminNote: rejectReason
+    };
+
+    userService.saveResetRequests(requests);
+    return requests[index];
+  },
+
+  /**
+   * Check status of a request by Username or Request ID
+   */
+  checkRequestStatus: (identifier) => {
+    const clean = (identifier || '').trim().toLowerCase();
+    if (!clean) return null;
+
+    const requests = userService.getResetRequests();
+    return requests.find(r => 
+      r.id.toLowerCase() === clean || 
+      r.username.toLowerCase() === clean
+    ) || null;
   }
 };
