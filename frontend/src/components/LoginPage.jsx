@@ -190,15 +190,19 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
       try { soundFx?.playSuccess?.(); } catch (err) {}
       setFailedAttempts(0);
 
+      // Resolve actual target role based on authenticated user's assigned role
+      const actualRoleKey = authResult.user.role || selectedRoleKey;
+      const actualRoleMeta = USER_ROLES[actualRoleKey] || targetRole;
+
       const authenticatedUser = {
-        ...targetRole,
+        ...actualRoleMeta,
         ...authResult.user,
-        name: authResult.user.name || targetRole.name,
-        roleTag: targetRole.roleTag,
-        badge: authResult.user.badge || targetRole.badge,
-        color: targetRole.color,
-        icon: targetRole.icon,
-        defaultTab: authResult.user.assignedTab || targetRole.defaultTab
+        name: authResult.user.name || actualRoleMeta.name,
+        roleTag: actualRoleMeta.roleTag,
+        badge: authResult.user.badge || actualRoleMeta.badge,
+        color: actualRoleMeta.color,
+        icon: actualRoleMeta.icon,
+        defaultTab: authResult.user.assignedTab || actualRoleMeta.defaultTab
       };
 
       onLogin(authenticatedUser);
@@ -441,7 +445,13 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
                   spellCheck="false"
                   placeholder="Enter Badge ID or Username"
                   value={username}
-                  onChange={(e) => setUsername(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setUsername(val);
+                    if (val.trim().toLowerCase() === 'admin') {
+                      setSelectedRoleKey('admin');
+                    }
+                  }}
                   disabled={lockoutTime > 0}
                   className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-900 focus:bg-white focus:outline-none focus:border-rose-600 transition-colors disabled:opacity-60"
                 />
