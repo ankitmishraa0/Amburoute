@@ -38,6 +38,7 @@ export const USER_ROLES = {
   driver: {
     id: 'driver',
     name: 'Ambulance Driver / Paramedic',
+    shortName: 'Driver / Medic',
     roleTag: 'AMBULANCE CREW',
     badge: 'UNIT MEDIC-12 (ALS)',
     icon: Navigation,
@@ -47,11 +48,12 @@ export const USER_ROLES = {
     textColor: 'text-rose-700',
     defaultTab: 'command_map',
     userName: 'Paramedic J. Miller & Driver Rajesh',
-    description: 'Turn-by-turn emergency GPS navigation, patient vitals transmission, and nearest hospital routing.'
+    description: 'Emergency turn-by-turn navigation, patient vitals transmission, and nearest hospital routing.'
   },
   hospital: {
     id: 'hospital',
     name: 'Hospital ER Doctor / Staff',
+    shortName: 'Hospital ER',
     roleTag: 'EMERGENCY ROOM',
     badge: 'AIIMS GORAKHPUR ER',
     icon: Building2,
@@ -66,6 +68,7 @@ export const USER_ROLES = {
   traffic: {
     id: 'traffic',
     name: 'Traffic Police Controller',
+    shortName: 'Traffic Police',
     roleTag: 'ITMS TRAFFIC HQ',
     badge: 'GORAKHPUR TRAFFIC POLICE',
     icon: Signal,
@@ -80,6 +83,7 @@ export const USER_ROLES = {
   admin: {
     id: 'admin',
     name: 'Master Administrator (Super Admin)',
+    shortName: 'Super Admin',
     roleTag: 'FULL SYSTEM ROOT',
     badge: 'ALL POWERS ENABLED',
     icon: Crown,
@@ -136,7 +140,7 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
   const [foundStatus, setFoundStatus] = useState(null);
 
   // Role Selection
-  const handleRoleCardSelect = (key) => {
+  const handleRoleSelect = (key) => {
     setSelectedRoleKey(key);
     setErrorMessage(null);
     try { soundFx?.playClick?.(); } catch (e) {}
@@ -218,7 +222,7 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
       setSelectedRoleKey(newUser.role);
       setUsername(newUser.username);
       setPassword(newUser.password);
-      setSuccessBanner(`Account registered successfully for ${newUser.name}! Click Authenticate to enter.`);
+      setSuccessBanner(`Account created for ${newUser.name}! Click Authenticate below to enter.`);
     } catch (err) {
       setIsRegistering(false);
       soundFx.playCriticalAlert();
@@ -238,7 +242,7 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
       soundFx.playSuccess();
       setForgotSuccess({
         id: req.id,
-        message: `Password reset request #${req.id} sent to System Administrator! Once approved in the Super Admin Deck, you can log in with your new password.`
+        message: `Password reset request #${req.id} sent to Administrator! Once approved in the Super Admin Deck, your new password will activate.`
       });
       setForgotForm({
         username: '',
@@ -269,26 +273,26 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
   const selectedRole = USER_ROLES[selectedRoleKey];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-rose-50/40 to-slate-200 flex flex-col justify-between p-4 sm:p-6 lg:p-8 font-sans selection:bg-rose-600 selection:text-white transition-colors duration-200">
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 via-rose-50/40 to-slate-200 flex flex-col justify-between p-3 sm:p-5 lg:p-6 font-sans selection:bg-rose-600 selection:text-white transition-colors duration-200">
       
       {/* Top Navbar */}
-      <div className="max-w-6xl w-full mx-auto flex items-center justify-between py-2">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-600 to-red-600 flex items-center justify-center text-xl text-white shadow-md shadow-rose-600/30">
+      <div className="max-w-5xl w-full mx-auto flex items-center justify-between py-1 sm:py-2">
+        <div className="flex items-center space-x-2.5">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-rose-600 to-red-600 flex items-center justify-center text-lg text-white shadow-md shadow-rose-600/30">
             🚑
           </div>
           <div>
-            <div className="text-xl sm:text-2xl font-black tracking-wider text-slate-900">
+            <div className="text-lg sm:text-xl font-black tracking-wider text-slate-900 leading-tight">
               AMBU<span className="text-rose-600">ROUTE</span>
             </div>
-            <div className="text-[11px] font-mono font-bold text-slate-500 uppercase tracking-widest">
+            <div className="text-[10px] font-mono font-bold text-slate-500 uppercase tracking-widest hidden xs:block">
               Unified Emergency Mission OS
             </div>
           </div>
         </div>
 
-        <div className="flex items-center space-x-2.5">
-          <span className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[11px] font-mono font-bold text-emerald-700">
+        <div className="flex items-center space-x-2">
+          <span className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[10px] font-mono font-bold text-emerald-700">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
             <span>Network Online (Gorakhpur Hub)</span>
           </span>
@@ -297,7 +301,7 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
             <button
               onClick={toggleTheme}
               title={theme === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
-              className="flex items-center space-x-1.5 px-3 py-1 rounded-full bg-white border border-slate-200 text-slate-700 text-xs font-bold transition-all shadow-xs cursor-pointer hover:bg-slate-50"
+              className="flex items-center space-x-1 px-2.5 py-1 rounded-full bg-white border border-slate-200 text-slate-700 text-[11px] font-bold transition-all shadow-xs cursor-pointer hover:bg-slate-50"
             >
               {theme === 'dark' ? (
                 <>
@@ -315,123 +319,106 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
         </div>
       </div>
 
-      {/* Main Login Card Container */}
-      <div className="max-w-5xl w-full mx-auto my-auto py-6">
+      {/* ========================================================= */}
+      {/* FRONT & CENTER LOGIN PORTAL - DIRECT DETAIL FILLING */}
+      {/* ========================================================= */}
+      <div className="max-w-xl w-full mx-auto my-auto py-2 sm:py-4">
         
-        {/* Title Header */}
-        <div className="text-center mb-7">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-800 text-xs font-black uppercase tracking-wider mb-2.5 shadow-2xs">
-            <ShieldCheck className="w-4 h-4 text-rose-600" />
-            <span>Strict Role-Based Access Control (RBAC)</span>
-          </div>
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight">
-            Authorized Personnel Portal
-          </h1>
-          <p className="text-sm sm:text-base text-slate-600 max-w-2xl mx-auto mt-2">
-            Select your department role below and enter valid badge credentials to authenticate.
-          </p>
-        </div>
-
-        {/* 4 Role Selection Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-7">
-          {Object.entries(USER_ROLES).map(([key, role]) => {
-            const isSelected = selectedRoleKey === key;
-            const Icon = role.icon;
-
-            return (
-              <div
-                key={key}
-                onClick={() => handleRoleCardSelect(key)}
-                className={`relative rounded-3xl border-2 p-5 cursor-pointer transition-all duration-200 flex flex-col justify-between ${
-                  isSelected 
-                    ? 'border-rose-600 bg-white shadow-xl shadow-rose-600/10 scale-102 ring-2 ring-rose-600/20' 
-                    : 'border-slate-200/90 bg-white/90 hover:bg-white hover:border-slate-300 shadow-sm opacity-85 hover:opacity-100'
-                }`}
-              >
-                {isSelected && (
-                  <div className="absolute top-3 right-3 bg-rose-600 text-white rounded-full p-1 shadow-xs">
-                    <CheckCircle2 className="w-4 h-4" />
-                  </div>
-                )}
-
-                <div>
-                  <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${role.color} text-white flex items-center justify-center shadow-md mb-4`}>
-                    <Icon className="w-6 h-6" />
-                  </div>
-
-                  <div className="text-[10px] font-mono font-bold tracking-wider uppercase text-slate-400">
-                    {role.roleTag}
-                  </div>
-                  <h3 className="font-black text-slate-900 text-base mt-0.5 leading-snug">
-                    {role.name}
-                  </h3>
-
-                  <p className="text-xs text-slate-500 mt-2 line-clamp-3 leading-relaxed">
-                    {role.description}
-                  </p>
-                </div>
-
-                <div className="pt-3 mt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                  <span className={`font-mono font-bold text-[11px] ${isSelected ? 'text-rose-600' : 'text-slate-400'}`}>
-                    {isSelected ? '● Selected Dept' : 'Click to Select'}
-                  </span>
-                  <span className="text-[10px] font-mono font-bold text-slate-400">
-                    {role.badge}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Secure Credentials Form Box */}
-        <div className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 shadow-xl max-w-xl mx-auto space-y-5">
-          <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-            <div className="flex items-center space-x-3">
-              <div className={`w-10 h-10 rounded-2xl bg-gradient-to-br ${selectedRole.color} text-white flex items-center justify-center shadow-sm`}>
-                {React.createElement(selectedRole.icon, { className: 'w-5 h-5' })}
-              </div>
-              <div>
-                <div className="text-[10px] font-black uppercase text-slate-400">Logging In As:</div>
-                <div className="text-base font-black text-slate-900">{selectedRole.name}</div>
-              </div>
+        {/* Main Login Card - Immediately Front and Center */}
+        <div className="bg-white border-2 border-slate-200/90 rounded-3xl p-5 sm:p-7 shadow-2xl shadow-slate-300/40 space-y-5 backdrop-blur-md">
+          
+          {/* Header Inside Card */}
+          <div className="text-center space-y-1">
+            <div className="inline-flex items-center space-x-1.5 px-3 py-0.5 rounded-full bg-rose-50 border border-rose-200 text-rose-700 text-[11px] font-black uppercase tracking-wider mb-1">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Authorized Personnel Login</span>
             </div>
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+              Emergency Operator Sign-In
+            </h2>
+            <p className="text-xs text-slate-500">
+              Select department below and enter badge credentials to enter.
+            </p>
+          </div>
 
-            <span className="text-[10px] font-mono font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+          {/* STEP 1: FRONT-AND-CENTER DEPARTMENT PILLS SELECTOR */}
+          <div className="space-y-1.5">
+            <label className="block text-[11px] font-black uppercase tracking-wider text-slate-500 text-center">
+              Choose Department:
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {Object.entries(USER_ROLES).map(([key, role]) => {
+                const isSelected = selectedRoleKey === key;
+                const Icon = role.icon;
+
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => handleRoleSelect(key)}
+                    className={`p-2.5 rounded-2xl border-2 flex flex-col items-center justify-center text-center transition-all cursor-pointer ${
+                      isSelected
+                        ? `border-rose-600 bg-rose-50/60 shadow-md ring-2 ring-rose-600/10 scale-102`
+                        : 'border-slate-200 bg-slate-50/50 hover:bg-slate-100 hover:border-slate-300 opacity-85'
+                    }`}
+                  >
+                    <div className={`w-8 h-8 rounded-xl bg-gradient-to-br ${role.color} text-white flex items-center justify-center shadow-xs mb-1.5`}>
+                      <Icon className="w-4 h-4" />
+                    </div>
+                    <span className="text-[11px] font-black text-slate-900 leading-tight">
+                      {role.shortName}
+                    </span>
+                    <span className={`text-[9px] font-mono font-bold mt-0.5 ${isSelected ? 'text-rose-600 font-black' : 'text-slate-400'}`}>
+                      {isSelected ? '● Active' : role.roleTag.split(' ')[0]}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Current Selection Ribbon */}
+          <div className="p-2.5 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between text-xs">
+            <div className="flex items-center space-x-2">
+              <span className={`w-2 h-2 rounded-full bg-gradient-to-r ${selectedRole.color} animate-pulse`}></span>
+              <span className="text-slate-500 font-medium">Department:</span>
+              <strong className="text-slate-900">{selectedRole.name}</strong>
+            </div>
+            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-600">
               {selectedRole.badge}
             </span>
           </div>
 
-          {/* Success Banner */}
+          {/* Success Notification Banner */}
           {successBanner && (
-            <div className="p-3.5 bg-emerald-50 border border-emerald-300 rounded-2xl text-emerald-800 text-xs font-bold flex items-center space-x-2 animate-in fade-in">
+            <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-2xl text-emerald-800 text-xs font-bold flex items-center space-x-2 animate-in fade-in">
               <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
               <span>{successBanner}</span>
             </div>
           )}
 
-          {/* Security Error Banner */}
+          {/* Error Notification Banner */}
           {errorMessage && (
-            <div className="p-3.5 bg-rose-50 border border-rose-300 rounded-2xl text-rose-800 text-xs font-bold flex items-start space-x-2.5 animate-in fade-in slide-in-from-top-1">
+            <div className="p-3 bg-rose-50 border border-rose-300 rounded-2xl text-rose-800 text-xs font-bold flex items-start space-x-2 animate-in fade-in">
               <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
               <div className="leading-snug">
                 <div>{errorMessage}</div>
                 {failedAttempts > 0 && (
-                  <div className="text-[10px] text-rose-600 font-mono mt-1">
+                  <div className="text-[10px] text-rose-600 font-mono mt-0.5">
                     Failed login attempts: {failedAttempts} / 4
                   </div>
                 )}
                 {lockoutTime > 0 && (
                   <div className="text-[11px] text-rose-700 font-black mt-1 flex items-center space-x-1">
                     <Clock className="w-3 h-3" />
-                    <span>Cooldown active: please wait {lockoutTime}s before retry.</span>
+                    <span>Safety cooldown: wait {lockoutTime}s before retry.</span>
                   </div>
                 )}
               </div>
             </div>
           )}
 
-          {/* Strict Protected Form */}
+          {/* STEP 2: FRONT-AND-CENTER DETAIL FILLING INPUTS */}
           <form 
             onSubmit={handleSecureLogin} 
             className="space-y-4"
@@ -452,11 +439,11 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
                   autoCorrect="off"
                   autoCapitalize="none"
                   spellCheck="false"
-                  placeholder="Enter Operator Badge ID or Username"
+                  placeholder="Enter Badge ID or Username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   disabled={lockoutTime > 0}
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-900 focus:bg-white focus:outline-none focus:border-rose-600 transition-colors disabled:opacity-60"
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-900 focus:bg-white focus:outline-none focus:border-rose-600 transition-colors disabled:opacity-60"
                 />
               </div>
             </div>
@@ -479,7 +466,7 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={lockoutTime > 0}
-                  className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-900 focus:bg-white focus:outline-none focus:border-rose-600 transition-colors disabled:opacity-60"
+                  className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border-2 border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-900 focus:bg-white focus:outline-none focus:border-rose-600 transition-colors disabled:opacity-60"
                 />
                 <button
                   type="button"
@@ -492,6 +479,7 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
               </div>
             </div>
 
+            {/* BIG PRIMARY LOGIN BUTTON */}
             <button
               type="submit"
               disabled={isVerifying || lockoutTime > 0}
@@ -500,7 +488,7 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
               {isVerifying ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Verifying Encrypted Access Token...</span>
+                  <span>Verifying Credentials...</span>
                 </>
               ) : (
                 <>
@@ -512,8 +500,8 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
             </button>
           </form>
 
-          {/* Quick Operator Actions: Self-Registration & Forgot Password */}
-          <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+          {/* Quick Actions: Register & Forgot Password */}
+          <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
             <button
               type="button"
               onClick={() => {
@@ -521,10 +509,10 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
                 setIsRegisterOpen(true);
                 soundFx.playClick();
               }}
-              className="font-black text-rose-600 hover:text-rose-700 flex items-center space-x-1.5 cursor-pointer transition-colors"
+              className="font-black text-rose-600 hover:text-rose-700 flex items-center space-x-1 cursor-pointer transition-colors"
             >
               <UserPlus className="w-3.5 h-3.5" />
-              <span>New Operator? Create Account</span>
+              <span>New Operator? Register</span>
             </button>
 
             <button
@@ -535,28 +523,29 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
                 setIsForgotOpen(true);
                 soundFx.playClick();
               }}
-              className="font-bold text-slate-500 hover:text-slate-900 flex items-center space-x-1.5 cursor-pointer transition-colors"
+              className="font-bold text-slate-500 hover:text-slate-900 flex items-center space-x-1 cursor-pointer transition-colors"
             >
               <HelpCircle className="w-3.5 h-3.5" />
-              <span>Forgot ID / Password?</span>
+              <span>Forgot Password?</span>
             </button>
           </div>
 
-          {/* Security Status Ribbon */}
-          <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between text-[11px] text-slate-600 font-mono">
-            <div className="flex items-center space-x-2">
-              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>RBAC Protected Personnel Terminal</span>
-            </div>
-            <span className="text-[10px] text-slate-400 font-bold">256-Bit Encrypted</span>
+          {/* Terminal Encryption Footer */}
+          <div className="pt-2 flex items-center justify-between text-[11px] text-slate-400 font-mono border-t border-slate-100/60">
+            <span className="flex items-center space-x-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+              <span>RBAC Protected</span>
+            </span>
+            <span>256-Bit Encrypted Portal</span>
           </div>
+
         </div>
 
       </div>
 
       {/* Footer */}
-      <div className="max-w-6xl w-full mx-auto text-center py-4 border-t border-slate-200/60 text-xs text-slate-500 font-mono flex flex-col sm:flex-row items-center justify-between gap-2">
-        <span>AmbuRoute Multi-Tenant Disaster & Emergency Response System</span>
+      <div className="max-w-5xl w-full mx-auto text-center py-2 text-xs text-slate-500 font-mono flex flex-col sm:flex-row items-center justify-between gap-1">
+        <span>AmbuRoute Multi-Tenant Disaster & Emergency Response Platform</span>
         <span className="text-emerald-600 font-bold flex items-center space-x-1">
           <span>●</span>
           <span>End-to-End TLS / WSS Encrypted</span>
@@ -883,7 +872,7 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
                     <button
                       type="button"
                       onClick={() => setIsForgotOpen(false)}
-                      className="px-5 py-2.5 rounded-xl bg-slate-900 text-white font-black text-xs"
+                      className="px-5 py-2.5 rounded-xl bg-slate-900 text-white font-black text-xs cursor-pointer"
                     >
                       Close Window
                     </button>
