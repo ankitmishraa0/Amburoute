@@ -132,8 +132,8 @@ export default function App() {
   const handleSelectRole = (role) => {
     setCurrentRole(role);
     // Sync with currentUser
-    const mappedUser = Object.values(USER_ROLES).find(u => u.id === role.id) || USER_ROLES.driver;
-    setCurrentUser(mappedUser);
+    const mappedUser = Object.values(USER_ROLES).find(u => u.id === role.id || u.id === role.role) || USER_ROLES.driver;
+    setCurrentUser({ ...mappedUser, ...role });
     if (role.assignedTab) {
       setActiveTab(role.assignedTab);
     }
@@ -141,11 +141,10 @@ export default function App() {
 
   const handleLogin = (userRole) => {
     setCurrentUser(userRole);
-    const matchedRole = PORTAL_ROLES.find(r => r.id === userRole.id) || PORTAL_ROLES[0];
-    setCurrentRole(matchedRole);
-    if (userRole.defaultTab) {
-      setActiveTab(userRole.defaultTab);
-    }
+    const matchedRole = PORTAL_ROLES.find(r => r.id === userRole.role || r.id === userRole.id) || PORTAL_ROLES[0];
+    setCurrentRole({ ...matchedRole, ...userRole });
+    const targetTab = userRole.assignedTab || userRole.defaultTab || matchedRole.assignedTab || 'command_map';
+    setActiveTab(targetTab);
   };
 
   const handleLogout = () => {

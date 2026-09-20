@@ -62,8 +62,8 @@ export default function Header({
     { id: 'handoff', icon: HeartPulse, label: 'ER Trauma Bay', sub: 'Hospital Screen' },
   ];
 
-  // If Admin is logged in or user has admin tab, show Super Admin Deck
-  if (currentUser?.id === 'admin') {
+  // If Admin is logged in or user has admin role, show Super Admin Deck
+  if (currentUser?.role === 'admin' || currentUser?.id === 'admin') {
     navItems.push({
       id: 'admin_panel',
       icon: Crown,
@@ -128,18 +128,18 @@ export default function Header({
             title="Click to switch operator role or manage authentication"
           >
             <div className={`p-1.5 rounded-lg text-white shrink-0 ${
-              currentUser?.id === 'admin' ? 'bg-amber-600 shadow-amber-500/20' :
-              currentUser?.id === 'hospital' ? 'bg-blue-600 shadow-blue-500/20' :
-              currentUser?.id === 'traffic' ? 'bg-emerald-600 shadow-emerald-500/20' :
+              (currentUser?.role === 'admin' || currentUser?.id === 'admin') ? 'bg-amber-600 shadow-amber-500/20' :
+              (currentUser?.role === 'hospital' || currentUser?.id === 'hospital') ? 'bg-blue-600 shadow-blue-500/20' :
+              (currentUser?.role === 'traffic' || currentUser?.id === 'traffic') ? 'bg-emerald-600 shadow-emerald-500/20' :
               'bg-rose-600 shadow-rose-500/20'
             }`}>
-              {currentUser?.id === 'admin' ? <Crown className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
+              {(currentUser?.role === 'admin' || currentUser?.id === 'admin') ? <Crown className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
             </div>
             <div className="text-left leading-tight hidden xs:block sm:block">
               <div className="flex items-center space-x-1">
                 <span className="text-[10px] uppercase font-bold text-slate-400">User:</span>
                 <span className="text-xs font-black text-slate-900 group-hover:text-rose-600 truncate max-w-[90px] sm:max-w-[140px]">
-                  {currentUser?.badge || 'OPERATOR'}
+                  {currentUser?.badge || currentUser?.username || 'OPERATOR'}
                 </span>
                 <span className="text-[10px] text-slate-400">▾</span>
               </div>

@@ -6,7 +6,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import dispatch, triage, hospitals, signals, handoff
+from app.routers import dispatch, triage, hospitals, signals, handoff, users
 from app.services.simulation_engine import simulation_engine
 
 
@@ -45,6 +45,7 @@ app.include_router(triage.router)
 app.include_router(hospitals.router)
 app.include_router(signals.router)
 app.include_router(handoff.router)
+app.include_router(users.router)
 
 
 @app.get("/")

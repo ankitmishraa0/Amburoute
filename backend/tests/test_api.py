@@ -60,3 +60,30 @@ def test_handoff_summary():
     data = handoff_res.json()
     assert "receiving_hospital" in data
     assert "prep_checklist" in data
+
+
+def test_users_api():
+    # 1. Get users
+    res = client.get("/api/users")
+    assert res.status_code == 200
+    users = res.json()["users"]
+    assert len(users) >= 4
+
+    # 2. Create user
+    new_driver = {
+        "username": "driver_test_99",
+        "name": "Test Driver 99",
+        "role": "driver",
+        "password": "testpassword123",
+        "badge": "TEST-UNIT-99"
+    }
+    create_res = client.post("/api/users", json=new_driver)
+    assert create_res.status_code == 201
+
+    # 3. Prevent duplicate
+    dup_res = client.post("/api/users", json=new_driver)
+    assert dup_res.status_code == 400
+
+    # 4. Delete test user
+    del_res = client.delete("/api/users/driver_test_99")
+    assert del_res.status_code == 200

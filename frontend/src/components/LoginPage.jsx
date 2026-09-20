@@ -9,21 +9,24 @@ import {
   ArrowRight, 
   User, 
   Sparkles, 
-  CheckCircle2,
-  Sliders,
-  HeartPulse,
-  Flame,
-  Radio,
-  KeyRound,
-  Sun,
-  Moon,
-  AlertTriangle,
-  Eye,
-  EyeOff,
-  ShieldCheck,
-  Fingerprint
+  CheckCircle2, 
+  Sliders, 
+  HeartPulse, 
+  Flame, 
+  Radio, 
+  KeyRound, 
+  Sun, 
+  Moon, 
+  AlertTriangle, 
+  Eye, 
+  EyeOff, 
+  ShieldCheck, 
+  Fingerprint,
+  Shield,
+  Clock
 } from 'lucide-react';
 import { soundFx } from '../services/sound';
+import { userService } from '../services/userService';
 
 export const USER_ROLES = {
   driver: {
@@ -38,8 +41,6 @@ export const USER_ROLES = {
     textColor: 'text-rose-700',
     defaultTab: 'command_map',
     userName: 'Paramedic J. Miller & Driver Rajesh',
-    defaultId: 'driver108',
-    defaultPass: '1080',
     description: 'Turn-by-turn emergency GPS navigation, patient vitals transmission, and nearest hospital routing.'
   },
   hospital: {
@@ -54,8 +55,6 @@ export const USER_ROLES = {
     textColor: 'text-blue-700',
     defaultTab: 'handoff',
     userName: 'Dr. C. Sterling (Attending Physician)',
-    defaultId: 'doctor_aiims',
-    defaultPass: 'aiims123',
     description: 'Pre-arrival patient telemetry, live ECG waveform, ICU/Trauma bed booking, and ER triage prep.'
   },
   traffic: {
@@ -70,8 +69,6 @@ export const USER_ROLES = {
     textColor: 'text-emerald-700',
     defaultTab: 'signals',
     userName: 'Officer R. Verma (Traffic ITMS)',
-    defaultId: 'traffic_gkp',
-    defaultPass: 'traffic123',
     description: 'Real-time V2I intersection preemption, green wave corridor, and emergency signal overrides.'
   },
   admin: {
@@ -86,9 +83,7 @@ export const USER_ROLES = {
     textColor: 'text-amber-800',
     defaultTab: 'admin_panel',
     userName: 'System Administrator (God Mode)',
-    defaultId: 'admin',
-    defaultPass: 'admin123',
-    description: 'Ultimate power: Change speed, edit patient vitals, override all signals, edit hospital beds, and inject incidents.'
+    description: 'Ultimate power: Manage operator IDs, change speed, edit patient vitals, override all signals, and edit hospital beds.'
   }
 };
 
@@ -100,20 +95,11 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
   const [errorMessage, setErrorMessage] = useState(null);
   const [isVerifying, setIsVerifying] = useState(false);
   const [failedAttempts, setFailedAttempts] = useState(0);
+  const [lockoutTime, setLockoutTime] = useState(0);
 
-  // Role Selection (Selects department and gives clean feedback)
+  // Role Selection (Selects department and resets error message)
   const handleRoleCardSelect = (key) => {
     setSelectedRoleKey(key);
-    setErrorMessage(null);
-    try { soundFx?.playClick?.(); } catch (e) {}
-  };
-
-  // Quick-fill hint for authorized users
-  const handleFillAuthorizedPreset = (key) => {
-    const role = USER_ROLES[key];
-    setSelectedRoleKey(key);
-    setUsername(role.defaultId);
-    setPassword(role.defaultPass);
     setErrorMessage(null);
     try { soundFx?.playClick?.(); } catch (e) {}
   };
@@ -121,6 +107,8 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
   // Strict Authentication Handler
   const handleSecureLogin = (e) => {
     e.preventDefault();
+    if (lockoutTime > 0) return;
+
     setErrorMessage(null);
     setIsVerifying(true);
     try { soundFx?.playClick?.(); } catch (err) {}
@@ -130,27 +118,45 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
     setTimeout(() => {
       setIsVerifying(false);
 
-      // STRICT VALIDATION CHECK
-      const isUsernameCorrect = username.trim().toLowerCase() === targetRole.defaultId.toLowerCase();
-      const isPasswordCorrect = password.trim() === targetRole.defaultPass;
+      // Authenticate against persistent user database (default + admin-created users)
+      const authResult = userService.authenticateUser(username, password, selectedRoleKey);
 
-      if (!isUsernameCorrect || !isPasswordCorrect) {
-        // AUTHENTICATION FAILED
+      if (!authResult.success) {
         try { soundFx?.playCriticalAlert?.(); } catch (e) {}
-        setFailedAttempts(prev => prev + 1);
-        setErrorMessage(
-          `Security Alert: Invalid credentials for ${targetRole.name}. Access Denied. Verify Badge ID & Security Password.`
-        );
+        const nextAttempts = failedAttempts + 1;
+        setFailedAttempts(nextAttempts);
+
+        if (nextAttempts >= 4) {
+          setLockoutTime(20);
+          setErrorMessage('Security Warning: Multiple failed authentication attempts detected. Temporary safety cooldown initiated.');
+          const interval = setInterval(() => {
+            setLockoutTime(prev => {
+              if (prev <= 1) {
+                clearInterval(interval);
+                return 0;
+              }
+              return prev - 1;
+            });
+          }, 1000);
+        } else {
+          setErrorMessage(authResult.message);
+        }
         return;
       }
 
       // AUTHENTICATION PASSED - Issue Security Session
       try { soundFx?.playSuccess?.(); } catch (err) {}
+      setFailedAttempts(0);
 
       const authenticatedUser = {
         ...targetRole,
-        sessionToken: `SEC-${Math.random().toString(36).substring(2, 9).toUpperCase()}-${Date.now().toString().slice(-4)}`,
-        loginTimestamp: new Date().toLocaleTimeString()
+        ...authResult.user,
+        name: authResult.user.name || targetRole.name,
+        roleTag: targetRole.roleTag,
+        badge: authResult.user.badge || targetRole.badge,
+        color: targetRole.color,
+        icon: targetRole.icon,
+        defaultTab: authResult.user.assignedTab || targetRole.defaultTab
       };
 
       onLogin(authenticatedUser);
@@ -223,7 +229,7 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
           </p>
         </div>
 
-        {/* 4 Role Selection Cards */}
+        {/* 4 Role Selection Cards - Clean, without auto-fill hints */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-7">
           {Object.entries(USER_ROLES).map(([key, role]) => {
             const isSelected = selectedRoleKey === key;
@@ -268,17 +274,9 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
                   <span className={`font-mono font-bold text-[11px] ${isSelected ? 'text-rose-600' : 'text-slate-400'}`}>
                     {isSelected ? '● Selected Dept' : 'Click to Select'}
                   </span>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleFillAuthorizedPreset(key);
-                    }}
-                    className="text-[10px] font-mono font-bold text-slate-400 hover:text-slate-700 underline"
-                    title="Fill official badge preset for fast testing"
-                  >
-                    Auto-Fill ID
-                  </button>
+                  <span className="text-[10px] font-mono font-bold text-slate-400">
+                    {role.badge}
+                  </span>
                 </div>
               </div>
             );
@@ -309,12 +307,28 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
               <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
               <div className="leading-snug">
                 <div>{errorMessage}</div>
-                <div className="text-[10px] text-rose-600 font-mono mt-1">Failed attempts logged: {failedAttempts}</div>
+                {failedAttempts > 0 && (
+                  <div className="text-[10px] text-rose-600 font-mono mt-1">
+                    Failed login attempts: {failedAttempts} / 4
+                  </div>
+                )}
+                {lockoutTime > 0 && (
+                  <div className="text-[11px] text-rose-700 font-black mt-1 flex items-center space-x-1">
+                    <Clock className="w-3 h-3" />
+                    <span>Cooldown active: please wait {lockoutTime}s before retry.</span>
+                  </div>
+                )}
               </div>
             </div>
           )}
 
-          <form onSubmit={handleSecureLogin} className="space-y-4">
+          {/* Strict Protected Form with autoComplete="off" */}
+          <form 
+            onSubmit={handleSecureLogin} 
+            className="space-y-4"
+            autoComplete="off"
+            noValidate
+          >
             <div>
               <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1">
                 Operator Badge ID / Username
@@ -323,11 +337,17 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
                 <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                 <input
                   type="text"
+                  name="amburoute_operator_badge"
                   required
-                  placeholder={`e.g. ${selectedRole.defaultId}`}
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="none"
+                  spellCheck="false"
+                  placeholder="Enter Operator Badge ID or Username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-900 focus:bg-white focus:outline-none focus:border-rose-600"
+                  disabled={lockoutTime > 0}
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-900 focus:bg-white focus:outline-none focus:border-rose-600 transition-colors disabled:opacity-60"
                 />
               </div>
             </div>
@@ -340,16 +360,23 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                 <input
                   type={showPassword ? 'text' : 'password'}
+                  name="amburoute_security_pin"
                   required
-                  placeholder="Enter security password"
+                  autoComplete="new-password"
+                  autoCorrect="off"
+                  autoCapitalize="none"
+                  spellCheck="false"
+                  placeholder="Enter Security Password or PIN"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-900 focus:bg-white focus:outline-none focus:border-rose-600"
+                  disabled={lockoutTime > 0}
+                  className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-slate-900 focus:bg-white focus:outline-none focus:border-rose-600 transition-colors disabled:opacity-60"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  title={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -358,8 +385,8 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
 
             <button
               type="submit"
-              disabled={isVerifying}
-              className="w-full py-3.5 px-4 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white rounded-xl font-black text-sm uppercase tracking-wider shadow-lg shadow-rose-600/30 transition-all cursor-pointer flex items-center justify-center space-x-2"
+              disabled={isVerifying || lockoutTime > 0}
+              className="w-full py-3.5 px-4 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white rounded-xl font-black text-sm uppercase tracking-wider shadow-lg shadow-rose-600/30 transition-all cursor-pointer flex items-center justify-center space-x-2 disabled:opacity-50"
             >
               {isVerifying ? (
                 <>
@@ -376,18 +403,13 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
             </button>
           </form>
 
-          {/* Authorized Credentials Card for Presentation */}
+          {/* Security Status Ribbon (No sensitive credentials displayed) */}
           <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between text-[11px] text-slate-600 font-mono">
-            <div>
-              Authorized ID for <strong className="text-slate-800">{selectedRole.name.split(' ')[0]}</strong>: <code className="text-rose-600 font-bold">{selectedRole.defaultId}</code> / <code className="text-rose-600 font-bold">{selectedRole.defaultPass}</code>
+            <div className="flex items-center space-x-2">
+              <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>RBAC Protected Personnel Terminal</span>
             </div>
-            <button
-              type="button"
-              onClick={() => handleFillAuthorizedPreset(selectedRoleKey)}
-              className="px-2 py-1 rounded-lg bg-white border border-slate-300 hover:border-rose-500 text-slate-700 text-[10px] font-bold cursor-pointer"
-            >
-              Auto-Fill
-            </button>
+            <span className="text-[10px] text-slate-400 font-bold">256-Bit Encrypted</span>
           </div>
         </div>
 

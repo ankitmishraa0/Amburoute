@@ -1,0 +1,54 @@
+[
+  {
+    "id": "admin",
+    "username": "admin",
+    "name": "System Administrator (God Mode)",
+    "role": "admin",
+    "department": "Master Administration",
+    "badge": "ALL POWERS ENABLED",
+    "password": "admin123",
+    "status": "active",
+    "assignedTab": "admin_panel",
+    "createdAt": "2026-01-01",
+    "description": "Full Root Authority: V2I traffic override, live telemetry simulation, hospital beds, and system users."
+  },
+  {
+    "id": "driver108",
+    "username": "driver108",
+    "name": "Paramedic J. Miller & Driver Rajesh",
+    "role": "driver",
+    "department": "Ambulance Crew (ALS)",
+    "badge": "UNIT MEDIC-12 (ALS)",
+    "password": "1080",
+    "status": "active",
+    "assignedTab": "command_map",
+    "createdAt": "2026-01-01",
+    "description": "Emergency turn-by-turn navigation, patient vitals transmission, and dynamic hospital routing."
+  },
+  {
+    "id": "doctor_aiims",
+    "username": "doctor_aiims",
+    "name": "Dr. C. Sterling (Attending Physician)",
+    "role": "hospital",
+    "department": "Hospital Emergency Room",
+    "badge": "AIIMS GORAKHPUR ER",
+    "password": "aiims123",
+    "status": "active",
+    "assignedTab": "handoff",
+    "createdAt": "2026-01-01",
+    "description": "Pre-arrival patient telemetry intake, Lead-II ECG monitor, ICU bed reservation, and clinical triage."
+  },
+  {
+    "id": "traffic_gkp",
+    "username": "traffic_gkp",
+    "name": "Officer R. Verma (Traffic ITMS)",
+    "role": "traffic",
+    "department": "ITMS Traffic Police HQ",
+    "badge": "GORAKHPUR TRAFFIC POLICE",
+    "password": "traffic123",
+    "status": "active",
+    "assignedTab": "signals",
+    "createdAt": "2026-01-01",
+    "description": "Real-time V2I intersection preemption, automated green wave corridors, and manual cycle overrides."
+  }
+]
