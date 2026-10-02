@@ -126,7 +126,8 @@ function HospitalRadarSVG({ topHospitals = [] }) {
 export default function HospitalMatrixView({ 
   hospitals = [], 
   currentHospitalId, 
-  onHospitalSelected 
+  onHospitalSelected,
+  onNavigateTab 
 }) {
   const [selectedHospId, setSelectedHospId] = useState(currentHospitalId || 'hosp-gkp-aiims');
   const [isRouting, setIsRouting] = useState(false);
@@ -166,9 +167,22 @@ export default function HospitalMatrixView({
           </div>
         </div>
 
-        <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-700 dark:text-slate-300">
-          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-          <span>Dynamic Rerouting Enabled</span>
+        <div className="flex items-center space-x-2 shrink-0">
+          <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-700 dark:text-slate-300">
+            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <span>Dynamic Rerouting Active</span>
+          </div>
+
+          {onNavigateTab && (
+            <button
+              type="button"
+              onClick={() => onNavigateTab('handoff')}
+              className="px-3 py-1 rounded-md bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 text-white font-medium text-xs transition-colors flex items-center space-x-1.5"
+            >
+              <span>View ER Bay Handoff</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
       </div>
 
@@ -251,27 +265,35 @@ export default function HospitalMatrixView({
 
                   {/* Route Action Button */}
                   <div className="flex flex-col sm:items-end justify-between space-y-2 shrink-0">
-                    <button
-                      onClick={() => handleRouteTo(h.id)}
-                      disabled={isTarget || isRouting}
-                      className={`w-full sm:w-auto px-4 py-2 rounded-md font-medium text-xs transition-colors flex items-center justify-center space-x-1.5 ${
-                        isTarget
-                          ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold cursor-default'
-                          : 'bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-900 dark:text-white'
-                      }`}
-                    >
-                      {isTarget ? (
-                        <>
-                          <Check className="w-3.5 h-3.5" />
-                          <span>Active Destination</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>Route Here</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </>
-                      )}
-                    </button>
+                    {isTarget ? (
+                      <div className="space-y-1.5 text-right w-full sm:w-auto">
+                        <div className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-md bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
+                          <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                          <span>Active Locked Destination</span>
+                        </div>
+
+                        {onNavigateTab && (
+                          <button
+                            type="button"
+                            onClick={() => onNavigateTab('handoff')}
+                            className="w-full sm:w-auto px-3.5 py-1.5 rounded-md bg-red-600 hover:bg-red-700 text-white font-semibold text-xs shadow-xs transition-colors flex items-center justify-center space-x-1.5"
+                          >
+                            <span>Open ER Handoff Bay</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleRouteTo(h.id)}
+                        disabled={isRouting}
+                        className="w-full sm:w-auto px-4 py-2 rounded-md font-medium text-xs transition-colors flex items-center justify-center space-x-1.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-900 dark:text-white"
+                      >
+                        <span>Select as Destination</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    )}
 
                     <div className="text-[11px] text-slate-500 font-mono">
                       Desk: <strong className="text-slate-700 dark:text-slate-300">{h.contact_phone}</strong>

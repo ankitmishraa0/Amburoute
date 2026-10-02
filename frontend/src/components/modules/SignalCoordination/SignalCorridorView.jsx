@@ -4,7 +4,8 @@ import {
   CheckCircle2, 
   RefreshCw, 
   ShieldCheck,
-  Check
+  Check,
+  ArrowRight
 } from 'lucide-react';
 import { overrideSignal } from '@/services/api';
 
@@ -12,9 +13,11 @@ export default function SignalCorridorView({
   signals = [], 
   ambulance, 
   setTelemetry, 
-  onSignalUpdated 
+  onSignalUpdated,
+  onNavigateTab 
 }) {
   const [activeToast, setActiveToast] = useState(null);
+  const [showManualOverrides, setShowManualOverrides] = useState(false);
 
   const triggerToast = (msg) => {
     setActiveToast(msg);
@@ -158,22 +161,43 @@ export default function SignalCorridorView({
           </div>
 
           {/* Quick Override Actions */}
-          <div className="flex items-center space-x-2 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
             <button
+              type="button"
               onClick={handleForceAllGreen}
-              className="px-3 py-1.5 rounded-md bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 font-medium text-xs transition-colors flex items-center space-x-1.5"
+              className="px-3.5 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs shadow-xs transition-colors flex items-center space-x-1.5"
             >
               <Check className="w-3.5 h-3.5" />
-              <span>Lock Corridor (All Green)</span>
+              <span>Lock All Green (Green Wave)</span>
             </button>
 
             <button
+              type="button"
               onClick={handleResetAutomated}
               className="px-3 py-1.5 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 font-medium text-xs transition-colors flex items-center space-x-1.5"
             >
               <RefreshCw className="w-3.5 h-3.5" />
-              <span>Restore Adaptive Timing</span>
+              <span>Restore Adaptive</span>
             </button>
+
+            <button
+              type="button"
+              onClick={() => setShowManualOverrides(!showManualOverrides)}
+              className="px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 text-slate-600 dark:text-slate-300 text-xs font-mono transition-colors"
+            >
+              {showManualOverrides ? 'Hide Overrides' : 'Manual Overrides'}
+            </button>
+
+            {onNavigateTab && (
+              <button
+                type="button"
+                onClick={() => onNavigateTab('hospitals')}
+                className="px-3.5 py-1.5 rounded-md bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 text-white font-medium text-xs transition-colors flex items-center space-x-1.5"
+              >
+                <span>Step 3: Select Hospital</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -356,50 +380,52 @@ export default function SignalCorridorView({
 
               </div>
 
-              {/* 3-Button Manual Controls */}
-              <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800">
-                <div className="text-[10px] uppercase font-mono text-slate-400 mb-1.5">
-                  Manual Phase Override
+              {/* Optional Manual Phase Overrides */}
+              {showManualOverrides && (
+                <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800">
+                  <div className="text-[10px] uppercase font-mono text-slate-400 mb-1.5">
+                    Manual Phase Override
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleSetSignalState(sig.id, 'green_wave')}
+                      className={`py-1.5 px-1 rounded text-xs font-medium transition-colors flex items-center justify-center ${
+                        isGreen 
+                          ? 'bg-emerald-600 text-white font-semibold' 
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
+                      }`}
+                    >
+                      Green
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSetSignalState(sig.id, 'amber_prep')}
+                      className={`py-1.5 px-1 rounded text-xs font-medium transition-colors flex items-center justify-center ${
+                        isAmber 
+                          ? 'bg-amber-500 text-white font-semibold' 
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
+                      }`}
+                    >
+                      Amber
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSetSignalState(sig.id, 'red')}
+                      className={`py-1.5 px-1 rounded text-xs font-medium transition-colors flex items-center justify-center ${
+                        isRed 
+                          ? 'bg-red-600 text-white font-semibold' 
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
+                      }`}
+                    >
+                      Red
+                    </button>
+                  </div>
                 </div>
-
-                <div className="grid grid-cols-3 gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => handleSetSignalState(sig.id, 'green_wave')}
-                    className={`py-1.5 px-1 rounded text-xs font-medium transition-colors flex items-center justify-center ${
-                      isGreen 
-                        ? 'bg-emerald-600 text-white font-semibold' 
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
-                    }`}
-                  >
-                    Green
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleSetSignalState(sig.id, 'amber_prep')}
-                    className={`py-1.5 px-1 rounded text-xs font-medium transition-colors flex items-center justify-center ${
-                      isAmber 
-                        ? 'bg-amber-500 text-white font-semibold' 
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
-                    }`}
-                  >
-                    Amber
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleSetSignalState(sig.id, 'red')}
-                    className={`py-1.5 px-1 rounded text-xs font-medium transition-colors flex items-center justify-center ${
-                      isRed 
-                        ? 'bg-red-600 text-white font-semibold' 
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200'
-                    }`}
-                  >
-                    Red
-                  </button>
-                </div>
-              </div>
+              )}
 
             </div>
           );

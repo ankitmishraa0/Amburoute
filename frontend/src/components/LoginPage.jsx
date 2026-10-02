@@ -25,8 +25,8 @@ export { OPERATOR_ROLES as USER_ROLES };
 
 export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
   const [selectedRoleKey, setSelectedRoleKey] = useState('driver');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('driver108');
+  const [password, setPassword] = useState('1080');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
   const [successBanner, setSuccessBanner] = useState(null);
@@ -67,7 +67,42 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
 
   const handleRoleSelect = (key) => {
     setSelectedRoleKey(key);
+    const roleMeta = ROLE_MAP[key];
+    if (roleMeta) {
+      setUsername(roleMeta.demoUsername || '');
+      setPassword(roleMeta.demoPassword || '');
+    }
     setErrorMessage(null);
+  };
+
+  const handleQuickDemoLogin = (keyToUse) => {
+    const roleKey = keyToUse || selectedRoleKey;
+    const roleMeta = ROLE_MAP[roleKey] || ROLE_MAP['driver'];
+    const u = roleMeta.demoUsername || 'driver108';
+    const p = roleMeta.demoPassword || '1080';
+
+    setSelectedRoleKey(roleKey);
+    setUsername(u);
+    setPassword(p);
+    setErrorMessage(null);
+    setIsVerifying(true);
+
+    setTimeout(() => {
+      const authResult = userService.authenticateUser(u, p, roleKey);
+      setIsVerifying(false);
+      if (authResult.success) {
+        const authenticatedUser = {
+          ...roleMeta,
+          ...authResult.user,
+          name: authResult.user.name || roleMeta.label,
+          badge: authResult.user.badge || roleMeta.badge,
+          defaultTab: authResult.user.assignedTab || roleMeta.assignedTab
+        };
+        onLogin(authenticatedUser);
+      } else {
+        setErrorMessage(authResult.message || 'Demo authentication failed.');
+      }
+    }, 150);
   };
 
   const handleSecureLogin = (e) => {
@@ -235,10 +270,16 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
           </div>
 
           {/* Department Console Selector */}
-          <div className="space-y-1.5">
-            <label className="block text-[11px] font-medium text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-              Console Department
-            </label>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+                Select Console Department
+              </label>
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono font-medium">
+                1-Click Demo Ready
+              </span>
+            </div>
+
             <div className="grid grid-cols-2 gap-2">
               {OPERATOR_ROLES.map((role) => {
                 const isSelected = selectedRoleKey === role.id;
@@ -249,9 +290,9 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
                     key={role.id}
                     type="button"
                     onClick={() => handleRoleSelect(role.id)}
-                    className={`p-2.5 rounded-md border text-left transition-colors flex items-center space-x-2.5 ${
+                    className={`p-2.5 rounded-md border text-left transition-all flex items-center space-x-2.5 ${
                       isSelected
-                        ? 'border-slate-900 dark:border-white bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+                        ? 'border-slate-900 dark:border-white bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
                         : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
                   >
@@ -268,9 +309,27 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
             </div>
           </div>
 
+          {/* 1-Click Primary Action Button */}
+          <button
+            type="button"
+            onClick={() => handleQuickDemoLogin(selectedRoleKey)}
+            disabled={isVerifying || lockoutTime > 0}
+            className="w-full py-2.5 px-4 bg-red-600 hover:bg-red-700 text-white font-semibold text-xs rounded-md shadow-sm transition-colors flex items-center justify-center space-x-2 disabled:opacity-50"
+          >
+            {isVerifying ? (
+              <span>Connecting to Dispatch CAD...</span>
+            ) : (
+              <>
+                <Activity className="w-4 h-4" />
+                <span>Launch {selectedRole.label} Console (1-Click)</span>
+                <ArrowRight className="w-3.5 h-3.5 ml-1" />
+              </>
+            )}
+          </button>
+
           {/* Quick Credential Hint */}
           <div className="px-3 py-1.5 bg-slate-50 dark:bg-slate-800/60 rounded border border-slate-200 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500 font-mono">
-            <span>Demo Badge:</span>
+            <span>Pre-filled Credentials:</span>
             <span className="font-semibold text-slate-700 dark:text-slate-300">{selectedRole.credentialsHint}</span>
           </div>
 
@@ -303,8 +362,17 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
             </div>
           )}
 
+          {/* Divider with option to sign in manually */}
+          <div className="relative flex items-center justify-center my-1">
+            <div className="border-t border-slate-200 dark:border-slate-800 w-full"></div>
+            <span className="bg-white dark:bg-slate-900 px-2 text-[10px] uppercase font-mono text-slate-400 shrink-0">
+              or sign in with custom credentials
+            </span>
+            <div className="border-t border-slate-200 dark:border-slate-800 w-full"></div>
+          </div>
+
           {/* Login Form */}
-          <form onSubmit={handleSecureLogin} className="space-y-3.5" autoComplete="off">
+          <form onSubmit={handleSecureLogin} className="space-y-3" autoComplete="off">
             <div>
               <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">
                 Badge ID / Username
@@ -359,14 +427,7 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
               disabled={isVerifying || lockoutTime > 0}
               className="w-full py-2 px-3 bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-white rounded-md font-medium text-xs transition-colors flex items-center justify-center space-x-1.5 disabled:opacity-50"
             >
-              {isVerifying ? (
-                <span>Verifying credentials...</span>
-              ) : (
-                <>
-                  <span>Sign In to {selectedRole.label}</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </>
-              )}
+              <span>Authenticate Credentials</span>
             </button>
           </form>
 

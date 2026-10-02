@@ -6,6 +6,7 @@ import HeroPitchModal from './components/HeroPitchModal';
 import RolePortalModal, { PORTAL_ROLES } from './components/RolePortalModal';
 import LoginPage, { USER_ROLES } from './components/LoginPage';
 import AdminControlPanel from './components/AdminControlPanel';
+import TaskProgressBar from './components/TaskProgressBar';
 
 // Modules
 import LiveMap from './components/modules/CommandMap/LiveMap';
@@ -436,6 +437,14 @@ export default function App() {
           </div>
         </div>
 
+        {/* Guided Primary Task Progression Bar */}
+        <TaskProgressBar
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          telemetry={telemetry}
+          currentUser={currentUser}
+        />
+
         {/* TAB 1: COMMAND & GIS MAP */}
         {activeTab === 'command_map' && (
           <div className="space-y-4">
@@ -462,6 +471,7 @@ export default function App() {
                   activeIncident={telemetry?.incident}
                   onSelectScenario={handleSelectScenario}
                   currentScenarioKey={telemetry?.scenario_key}
+                  onNavigateTab={setActiveTab}
                 />
               </div>
             </div>
@@ -474,6 +484,7 @@ export default function App() {
             signals={telemetry?.signals || []}
             ambulance={telemetry?.ambulance}
             setTelemetry={setTelemetry}
+            onNavigateTab={setActiveTab}
             onSignalUpdated={() => {
               fetchTelemetrySnapshot().then(data => {
                 if (data && !hasUserRelocatedRef.current) setTelemetry(data);
@@ -488,6 +499,7 @@ export default function App() {
             hospitals={hospitals}
             currentHospitalId={telemetry?.ambulance?.target_hospital_id}
             onHospitalSelected={handleSelectHospital}
+            onNavigateTab={setActiveTab}
           />
         )}
 
@@ -495,7 +507,7 @@ export default function App() {
         {activeTab === 'triage' && (
           <AIRiskView
             initialVitals={telemetry?.incident?.patient_vitals}
-            onAssessmentUpdated={(res) => {
+            onAssessmentUpdated={(_res) => {
               // Updated triage
             }}
           />
@@ -505,6 +517,7 @@ export default function App() {
         {activeTab === 'handoff' && (
           <HospitalHandoffView
             telemetry={telemetry}
+            onNavigateTab={setActiveTab}
           />
         )}
 

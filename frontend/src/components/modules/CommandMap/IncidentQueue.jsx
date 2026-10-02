@@ -9,7 +9,8 @@ export default function IncidentQueue({
   incidents, 
   activeIncident, 
   onSelectScenario,
-  currentScenarioKey 
+  currentScenarioKey,
+  onNavigateTab 
 }) {
   const lifecycleSteps = [
     { key: 'dispatched', label: 'Dispatched' },
@@ -24,9 +25,9 @@ export default function IncidentQueue({
   const activeIdx = currentIndex !== -1 ? currentIndex : 1;
 
   const scenarios = [
-    { key: 'scenario_stemi', title: 'Cardiac STEMI', priority: 'Priority 1', code: 'ALS' },
-    { key: 'scenario_trauma', title: 'Highway Multi-Trauma', priority: 'Priority 1', code: 'ALS' },
-    { key: 'scenario_pediatric', title: 'Pediatric Respiratory', priority: 'Priority 2', code: 'BLS' },
+    { key: 'scenario_stemi', title: 'Cardiac STEMI', code: 'P1' },
+    { key: 'scenario_trauma', title: 'Multi-Trauma', code: 'P1' },
+    { key: 'scenario_pediatric', title: 'Pediatric Resp', code: 'P2' },
   ];
 
   return (
@@ -43,7 +44,7 @@ export default function IncidentQueue({
               Active Incident Feed
             </h3>
             <p className="text-[10px] text-slate-500 font-mono">
-              CAD Stream
+              CAD Live Dispatch Stream
             </p>
           </div>
         </div>
@@ -122,7 +123,7 @@ export default function IncidentQueue({
                 </div>
               </div>
               <div className="bg-white dark:bg-slate-900 p-1.5 rounded text-center border border-slate-200 dark:border-slate-800">
-                <div className="text-[9px] text-slate-400 font-mono">BP (Sys/Dia)</div>
+                <div className="text-[9px] text-slate-400 font-mono">BP</div>
                 <div className="text-xs font-mono font-semibold text-slate-900 dark:text-white">
                   {activeIncident.patient_vitals.systolic_bp}/{activeIncident.patient_vitals.diastolic_bp}
                 </div>
@@ -139,36 +140,61 @@ export default function IncidentQueue({
         </div>
       )}
 
-      {/* Switch Emergency Scenario Selector */}
-      <div className="space-y-2 flex-1 flex flex-col justify-end">
+      {/* Guided Next-Action Section */}
+      <div className="space-y-2 pt-1 border-t border-slate-100 dark:border-slate-800 flex-1 flex flex-col justify-end">
         <div className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">
-          Active Scenario Simulation
+          Next Operational Step
         </div>
 
-        <div className="space-y-1.5">
-          {scenarios.map((sc) => {
-            const isSelected = sc.key === currentScenarioKey;
-            return (
-              <button
-                key={sc.key}
-                onClick={() => onSelectScenario(sc.key)}
-                className={`w-full text-left p-2 rounded-md text-xs transition-colors flex items-center justify-between border ${
-                  isSelected
-                    ? 'border-slate-900 dark:border-white bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-medium'
-                    : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-850 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
-                }`}
-              >
-                <div>
-                  <div className="font-medium text-slate-900 dark:text-white text-xs">{sc.title}</div>
-                  <div className="text-[10px] font-mono text-slate-500">{sc.priority} • {sc.code}</div>
-                </div>
-                <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-              </button>
-            );
-          })}
+        {onNavigateTab && (
+          <div className="space-y-1.5">
+            <button
+              type="button"
+              onClick={() => onNavigateTab('signals')}
+              className="w-full py-2 px-3 rounded-md bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-white font-medium text-xs transition-colors flex items-center justify-between"
+            >
+              <span>Step 2: Preempt Traffic Signals</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => onNavigateTab('hospitals')}
+              className="w-full py-2 px-3 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 font-medium text-xs transition-colors flex items-center justify-between"
+            >
+              <span>Step 3: Select Destination Hospital</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        {/* Compact Scenario Selector */}
+        <div className="pt-2">
+          <div className="text-[10px] font-mono text-slate-400 uppercase tracking-wider mb-1">
+            Simulate Emergency Case:
+          </div>
+          <div className="grid grid-cols-3 gap-1">
+            {scenarios.map((sc) => {
+              const isSelected = sc.key === currentScenarioKey;
+              return (
+                <button
+                  key={sc.key}
+                  type="button"
+                  onClick={() => onSelectScenario(sc.key)}
+                  className={`p-1.5 rounded text-[11px] font-mono border text-center transition-colors truncate ${
+                    isSelected
+                      ? 'border-slate-900 dark:border-white bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-semibold'
+                      : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400'
+                  }`}
+                  title={sc.title}
+                >
+                  {sc.title.split(' ')[0]}
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
-
     </div>
   );
 }

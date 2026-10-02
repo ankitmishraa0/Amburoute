@@ -23,8 +23,8 @@ export default function RolePortalModal({
   onSelectRole 
 }) {
   const [authMode, setAuthMode] = useState('quick'); // 'quick' | 'form'
-  const [loginId, setLoginId] = useState('');
-  const [loginPin, setLoginPin] = useState('');
+  const [loginId, setLoginId] = useState('driver108');
+  const [loginPin, setLoginPin] = useState('1080');
   const [showPin, setShowPin] = useState(false);
   const [selectedRoleId, setSelectedRoleId] = useState('driver');
   const [isAuthenticating, setIsAuthenticating] = useState(false);
@@ -72,6 +72,11 @@ export default function RolePortalModal({
 
   const handleSelectRoleTab = (roleId) => {
     setSelectedRoleId(roleId);
+    const matched = OPERATOR_ROLES.find(r => r.id === roleId);
+    if (matched) {
+      setLoginId(matched.demoUsername || '');
+      setLoginPin(matched.demoPassword || '');
+    }
     setErrorMsg(null);
   };
 

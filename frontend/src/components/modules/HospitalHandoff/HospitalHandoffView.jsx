@@ -104,10 +104,12 @@ function ECGMonitor({ heartRate = 120, isCritical = true }) {
 
 export default function HospitalHandoffView({ 
   telemetry, 
-  handoffData 
+  handoffData,
+  onNavigateTab 
 }) {
   const [data, setData] = useState(handoffData);
   const [checklist, setChecklist] = useState([]);
+  const [isPrinted, setIsPrinted] = useState(false);
 
   useEffect(() => {
     fetchHandoffSummary()
@@ -122,6 +124,12 @@ export default function HospitalHandoffView({
     setChecklist(prev =>
       prev.map(item => (item.id === id ? { ...item, done: !item.done } : item))
     );
+  };
+
+  const handlePrint = () => {
+    setIsPrinted(true);
+    window.print();
+    setTimeout(() => setIsPrinted(false), 3000);
   };
 
   const amb = telemetry?.ambulance;
@@ -166,14 +174,26 @@ export default function HospitalHandoffView({
         </div>
 
         <div className="flex items-center space-x-2 shrink-0">
+          {onNavigateTab && (
+            <button
+              type="button"
+              onClick={() => onNavigateTab('command_map')}
+              className="px-3 py-1.5 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 text-xs font-medium transition-colors"
+            >
+              ← Dispatch Map
+            </button>
+          )}
+
           <button
-            onClick={() => window.print()}
+            type="button"
+            onClick={handlePrint}
             className="px-3 py-1.5 rounded-md bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 text-xs font-medium transition-colors flex items-center space-x-1.5"
             title="Print Clinical Intake Record"
           >
-            <Printer className="w-3.5 h-3.5" />
-            <span>Print Clinical Record</span>
+            {isPrinted ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> : <Printer className="w-3.5 h-3.5" />}
+            <span>{isPrinted ? 'Printed' : 'Print Record'}</span>
           </button>
+
           <div className="px-2.5 py-1 rounded-md bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-xs font-mono text-red-700 dark:text-red-300 flex items-center space-x-1.5">
             <span className="w-2 h-2 rounded-full bg-red-600"></span>
             <span>Trauma Team Pre-Alerted</span>
