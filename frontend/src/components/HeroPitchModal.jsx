@@ -1,134 +1,116 @@
 import React from 'react';
 import { 
   X, 
-  ShieldAlert, 
-  Clock, 
+  Layers, 
   Radio, 
   Building2, 
   Stethoscope, 
-  ArrowRight, 
-  CheckCircle2, 
-  Zap, 
-  Award, 
   Activity, 
-  Layers,
-  ChevronRight
+  Check, 
+  Cpu, 
+  ShieldCheck,
+  Server,
+  Zap
 } from 'lucide-react';
-import confetti from 'canvas-confetti';
-import { soundFx } from '../services/sound';
 
-export default function HeroPitchModal({ isOpen, onClose, onSelectScenario }) {
+export default function HeroPitchModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
-  const triggerConfetti = () => {
-    soundFx.playGreenWavePing();
-    confetti({
-      particleCount: 80,
-      spread: 70,
-      origin: { y: 0.6 },
-      colors: ['#E11D48', '#DC2626', '#2563EB', '#10B981']
-    });
-    onClose();
-  };
-
-  const metrics = [
-    { label: 'Avg. Response Time', value: '-38%', subtext: '4.2 min vs 8.6 min city baseline', color: 'text-rose-600' },
-    { label: 'Green Wave Preemption', value: '99.4%', subtext: 'Zero intersection red-light stalls', color: 'text-blue-600' },
-    { label: 'Cath/Trauma Bay Prep', value: '100%', subtext: 'Pre-arrival telemetry handoff', color: 'text-emerald-600' },
-    { label: 'ML Triage Precision', value: '94.8%', subtext: 'AHA/MEWS aligned random forest', color: 'text-amber-600' }
+  const specifications = [
+    { label: 'CAD Telemetry Protocol', value: 'WebSocket / REST', subtext: 'Bidirectional low-latency telemetry' },
+    { label: 'Signal Preemption Radius', value: '500m Corridor', subtext: 'Automated V2I corridor lock' },
+    { label: 'Hospital Allocation', value: 'MCDM Engine', subtext: 'Multi-criteria capability & bed scoring' },
+    { label: 'Clinical Triage Model', value: 'ESI Protocol', subtext: 'AHA / MEWS physiological classification' }
   ];
 
   const modules = [
     {
-      title: '1. Dynamic Traffic & GIS Command',
+      title: '1. Dynamic GIS Routing & Telemetry',
       icon: Layers,
-      desc: 'Real-time telemetry tracking with instant re-routing around traffic bottlenecks and live incident dispatching.'
+      desc: 'Real-time vehicle positioning and dynamic rerouting around recorded arterial traffic congestion.'
     },
     {
-      title: '2. V2I Green Wave Signal Preemption',
+      title: '2. V2I Traffic Signal Preemption',
       icon: Radio,
-      desc: 'Automated 500m pre-clearing of upcoming intersections, switching signals to green wave priority corridor.'
+      desc: 'Corridor preemption clearing downstream signal intersections to establish green wave emergency lanes.'
     },
     {
       title: '3. Multi-Criteria Hospital Matrix',
       icon: Building2,
-      desc: 'MCDM scoring engine evaluating travel time, ICU vacancy, cath lab readiness, and trauma level compatibility.'
+      desc: 'MCDM matching engine balancing travel transit time, ICU bed vacancy, cath lab readiness, and trauma level.'
     },
     {
-      title: '4. Scikit-Learn Clinical ML Triage',
+      title: '4. Clinical Decision Support & Triage',
       icon: Stethoscope,
-      desc: 'Machine learning model predicting clinical risk index (0-100), key physiological drivers, and protocol directives.'
+      desc: 'Rule-based and ML triage pipeline predicting physiological risk, care pathway, and intervention urgency.'
     },
     {
-      title: '5. Pre-Arrival ER Trauma Bay Handoff',
+      title: '5. Pre-Arrival ER Trauma Intake',
       icon: Activity,
-      desc: 'Real-time incoming ambulance stream with live ECG waveform, vitals trend, and trauma team readiness checklists.'
+      desc: 'Real-time pre-arrival telemetry delivering vitals trends and synthesized Lead-II ECG to destination ER staff.'
     }
   ];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
-      <div className="relative w-full max-w-4xl max-h-[92vh] flex flex-col bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden my-auto animate-in fade-in zoom-in-95 duration-200">
+      <div className="relative w-full max-w-3xl max-h-[90vh] flex flex-col bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-xl overflow-hidden my-auto">
         
         {/* Header Ribbon */}
-        <div className="bg-rose-50 px-4 sm:px-6 py-3.5 sm:py-4 border-b border-rose-100 flex items-center justify-between shrink-0">
-          <div className="flex items-center space-x-2.5">
-            <span className="px-2.5 py-0.5 rounded-full bg-rose-600 text-white text-[11px] font-mono font-bold uppercase tracking-wider">
-              Capstone Prototype • Investable Demo
+        <div className="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between shrink-0 bg-slate-50 dark:bg-slate-850">
+          <div className="flex items-center space-x-2">
+            <Cpu className="w-4 h-4 text-slate-700 dark:text-slate-300" />
+            <span className="text-xs font-semibold text-slate-900 dark:text-white uppercase tracking-wider font-mono">
+              System Architecture & Dispatch Specifications
             </span>
-            <span className="text-slate-500 text-xs font-mono">v2.0 Architecture</span>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+            className="p-1 rounded-md text-slate-500 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="p-4 sm:p-8 space-y-6 sm:space-y-8 overflow-y-auto">
+        <div className="p-5 sm:p-6 space-y-5 overflow-y-auto">
           
-          {/* Hero Pitch Headline */}
-          <div className="space-y-3">
-            <h1 className="text-2xl sm:text-4xl font-black tracking-tight text-slate-900">
-              AmbuRoute: <span className="text-rose-600">AI-Powered Smart Ambulance Routing</span> & Emergency Logistics
-            </h1>
-            <p className="text-sm sm:text-base text-slate-600 leading-relaxed max-w-3xl">
-              Traditional emergency dispatch suffers from traffic gridlock, blind hospital selection, and delayed ER intake.
-              AmbuRoute connects <strong className="text-slate-900">smart vehicles</strong>, <strong className="text-slate-900">city traffic lights (V2I)</strong>, and <strong className="text-slate-900">hospital trauma bays</strong> into a unified, life-saving intelligence network.
+          {/* Overview */}
+          <div className="space-y-1.5">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">
+              AmbuRoute Dispatch Architecture
+            </h2>
+            <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+              AmbuRoute integrates vehicle computer-aided dispatch, municipal traffic signal preemption (V2I), 
+              and hospital intake telemetry into an automated operational workflow for emergency response teams.
             </p>
           </div>
 
-          {/* Key Metrics Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-            {metrics.map((m, idx) => (
-              <div key={idx} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 text-center space-y-1">
-                <div className={`text-2xl sm:text-3xl font-black font-mono ${m.color}`}>{m.value}</div>
-                <div className="text-xs font-bold text-slate-800">{m.label}</div>
-                <div className="text-[10px] text-slate-500 font-mono">{m.subtext}</div>
+          {/* Architectural Metrics */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            {specifications.map((item, idx) => (
+              <div key={idx} className="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-md border border-slate-200 dark:border-slate-700">
+                <div className="text-sm font-semibold font-mono text-slate-900 dark:text-white">{item.value}</div>
+                <div className="text-[11px] font-medium text-slate-700 dark:text-slate-300 mt-0.5">{item.label}</div>
+                <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">{item.subtext}</div>
               </div>
             ))}
           </div>
 
           {/* Core Modules Breakdown */}
-          <div className="space-y-3">
-            <div className="flex items-center space-x-2">
-              <Zap className="w-4 h-4 text-rose-600" />
-              <h3 className="text-xs font-mono uppercase tracking-widest text-rose-600 font-bold">
-                Platform Architecture & Modules
-              </h3>
+          <div className="space-y-2">
+            <div className="text-xs font-medium text-slate-700 dark:text-slate-300 uppercase tracking-wider font-mono">
+              Operational Subsystems
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {modules.map((mod, idx) => {
                 const Icon = mod.icon;
                 return (
-                  <div key={idx} className="bg-slate-50/70 p-3.5 rounded-2xl border border-slate-200 hover:border-rose-300 transition-all flex items-start space-x-3">
-                    <div className="p-2 rounded-xl bg-rose-50 border border-rose-200 text-rose-600 shrink-0">
+                  <div key={idx} className="p-3 rounded-md border border-slate-200 dark:border-slate-750 bg-white dark:bg-slate-800/40 flex items-start space-x-3">
+                    <div className="p-1.5 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 shrink-0">
                       <Icon className="w-4 h-4" />
                     </div>
                     <div>
-                      <h4 className="text-xs font-bold text-slate-900 mb-0.5">{mod.title}</h4>
-                      <p className="text-[11px] text-slate-600 leading-normal">{mod.desc}</p>
+                      <h4 className="text-xs font-semibold text-slate-900 dark:text-white mb-0.5">{mod.title}</h4>
+                      <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-normal">{mod.desc}</p>
                     </div>
                   </div>
                 );
@@ -136,18 +118,17 @@ export default function HeroPitchModal({ isOpen, onClose, onSelectScenario }) {
             </div>
           </div>
 
-          {/* CTA & Demo Launch */}
-          <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center space-x-2 text-xs text-slate-500 font-mono">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              <span>Full Interactive Simulation Ready (FastAPI + React + Scikit-Learn)</span>
+          {/* Footer info & Dismiss */}
+          <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs text-slate-500">
+            <div className="flex items-center space-x-1.5 font-mono text-[11px]">
+              <Server className="w-3.5 h-3.5 text-slate-400" />
+              <span>FastAPI Backend • React 19 Frontend</span>
             </div>
             <button
-              onClick={triggerConfetti}
-              className="w-full sm:w-auto flex items-center justify-center space-x-2 px-6 py-3 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white text-sm font-extrabold shadow-lg shadow-rose-600/30 transition-all cursor-pointer transform hover:scale-[1.02]"
+              onClick={onClose}
+              className="px-3.5 py-1.5 rounded-md bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-medium hover:bg-slate-800 dark:hover:bg-slate-100 transition-colors"
             >
-              <span>ENTER LIVE MISSION CONTROL</span>
-              <ArrowRight className="w-4 h-4" />
+              Close
             </button>
           </div>
 

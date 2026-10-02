@@ -5,10 +5,9 @@ import {
   RotateCcw, 
   AlertTriangle, 
   Clock, 
-  Navigation, 
-  Sparkles,
-  Zap,
-  Gauge
+  Activity,
+  Wind,
+  ShieldAlert
 } from 'lucide-react';
 import { soundFx } from '@/services/sound';
 
@@ -24,33 +23,28 @@ export default function SimulationBar({
   const amb = telemetry?.ambulance;
 
   const scenarios = [
-    { key: 'scenario_stemi', icon: '❤️', title: 'Cardiac STEMI', sub: 'Code-1 Heart Attack' },
-    { key: 'scenario_trauma', icon: '🚨', title: 'Highway Poly-Trauma', sub: 'Multi-Vehicle Collision' },
-    { key: 'scenario_pediatric', icon: '🫁', title: 'Pediatric Respiratory', sub: 'Severe Status Asthmaticus' },
+    { key: 'scenario_stemi', icon: Activity, title: 'Cardiac STEMI', code: 'Priority 1' },
+    { key: 'scenario_trauma', icon: AlertTriangle, title: 'Multi-Trauma', code: 'Priority 1' },
+    { key: 'scenario_pediatric', icon: Wind, title: 'Pediatric Respiratory', code: 'Priority 2' },
   ];
 
   const handlePlayPause = () => {
-    soundFx.playClick();
     onControlSimulation({ action: isRunning ? 'pause' : 'play', speed: simSpeed, scenarioKey });
   };
 
   const handleSpeedChange = (newSpeed) => {
-    soundFx.playClick();
     onControlSimulation({ action: 'set_speed', speed: newSpeed, scenarioKey });
   };
 
   const handleScenarioChange = (newKey) => {
-    soundFx.playChime?.() || soundFx.playClick();
     onControlSimulation({ action: 'set_scenario', speed: simSpeed, scenarioKey: newKey });
   };
 
   const handleToggleTraffic = () => {
-    soundFx.playReroute();
     onControlSimulation({ action: 'toggle_traffic', speed: simSpeed, scenarioKey });
   };
 
   const handleReset = () => {
-    soundFx.playClick();
     onControlSimulation({ action: 'reset', speed: simSpeed, scenarioKey });
   };
 
@@ -62,31 +56,36 @@ export default function SimulationBar({
   };
 
   return (
-    <div className="bg-white border-b border-slate-200 px-4 sm:px-6 py-2.5 shadow-xs">
+    <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-4 sm:px-6 py-2">
       <div className="max-w-[1780px] mx-auto flex flex-wrap items-center justify-between gap-3">
         
         {/* Left: Scenario Switcher */}
-        <div className="flex items-center space-x-2 overflow-x-auto py-0.5 scrollbar-none">
-          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider hidden xl:inline-block mr-1">
-            Emergency Scenario:
+        <div className="flex items-center space-x-1.5 overflow-x-auto py-0.5 scrollbar-none">
+          <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider hidden xl:inline-block mr-1">
+            Dispatch Case:
           </span>
           {scenarios.map((s) => {
             const isSelected = s.key === scenarioKey;
+            const Icon = s.icon;
             return (
               <button
                 key={s.key}
                 onClick={() => handleScenarioChange(s.key)}
-                className={`flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                className={`flex items-center space-x-2 px-2.5 py-1 rounded-md text-xs transition-colors whitespace-nowrap border ${
                   isSelected
-                    ? 'bg-rose-600 text-white shadow-sm border border-rose-600'
-                    : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200'
+                    ? 'border-slate-900 dark:border-white bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-medium'
+                    : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-750'
                 }`}
               >
-                <span className="text-base">{s.icon}</span>
-                <div className="text-left">
-                  <div className="font-bold leading-tight">{s.title}</div>
-                  <div className={`text-[9px] font-mono font-normal ${isSelected ? 'text-rose-100' : 'text-slate-400'}`}>{s.sub}</div>
-                </div>
+                <Icon className="w-3.5 h-3.5 shrink-0" />
+                <span className="leading-tight">{s.title}</span>
+                <span className={`text-[10px] font-mono px-1 rounded ${
+                  isSelected 
+                    ? 'bg-slate-800 dark:bg-slate-200 text-slate-200 dark:text-slate-800' 
+                    : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
+                }`}>
+                  {s.code}
+                </span>
               </button>
             );
           })}
@@ -98,10 +97,10 @@ export default function SimulationBar({
           {/* Play / Pause Button */}
           <button
             onClick={handlePlayPause}
-            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs ${
+            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
               isRunning
-                ? 'bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300'
-                : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300'
+                ? 'border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 hover:bg-amber-100'
+                : 'border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100'
             }`}
           >
             {isRunning ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current" />}
@@ -112,21 +111,21 @@ export default function SimulationBar({
           <button
             onClick={handleReset}
             title="Reset Simulation"
-            className="p-2 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition-colors cursor-pointer"
+            className="p-1 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-600 dark:text-slate-300 transition-colors"
           >
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
 
           {/* Simulation Speeds */}
-          <div className="flex items-center bg-slate-100 border border-slate-200 rounded-xl p-0.5">
+          <div className="flex items-center border border-slate-200 dark:border-slate-700 rounded-md overflow-hidden bg-slate-50 dark:bg-slate-800">
             {[1.0, 2.0, 4.0].map((spd) => (
               <button
                 key={spd}
                 onClick={() => handleSpeedChange(spd)}
-                className={`px-2 py-1 rounded-lg text-[11px] font-mono font-bold transition-colors cursor-pointer ${
+                className={`px-2 py-0.5 text-xs font-mono transition-colors ${
                   simSpeed === spd
-                    ? 'bg-rose-600 text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900'
+                    ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold'
+                    : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
                 }`}
               >
                 {spd}x
@@ -137,40 +136,40 @@ export default function SimulationBar({
           {/* Traffic Jam Detour Toggle */}
           <button
             onClick={handleToggleTraffic}
-            className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs ${
+            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
               trafficJam
-                ? 'bg-rose-600 text-white border border-rose-700 animate-pulse'
-                : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200'
+                ? 'border-red-400 dark:border-red-600 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300'
+                : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-750'
             }`}
-            title="Simulate sudden traffic congestion to test AI dynamic arterial rerouting"
+            title="Simulate corridor congestion to evaluate automatic rerouting"
           >
-            <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-            <span>{trafficJam ? 'Detour Active' : 'Inject Traffic Jam'}</span>
+            <AlertTriangle className={`w-3.5 h-3.5 ${trafficJam ? 'text-red-600 dark:text-red-400' : 'text-slate-400'}`} />
+            <span>{trafficJam ? 'Congestion Active (Detour)' : 'Simulate Congestion'}</span>
           </button>
         </div>
 
-        {/* Right: Live Mission Progress Meter */}
-        <div className="hidden lg:flex items-center space-x-4 bg-slate-50 border border-slate-200 px-3.5 py-1.5 rounded-xl">
+        {/* Right: Route Progress & ETA */}
+        <div className="hidden lg:flex items-center space-x-4 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-3 py-1 rounded-md">
           <div className="flex flex-col">
             <div className="flex items-center justify-between space-x-3 text-[11px] font-mono">
-              <span className="text-slate-500 font-medium">Route Progress</span>
-              <span className="text-rose-600 font-bold">{Math.round(progress * 100)}%</span>
+              <span className="text-slate-500 dark:text-slate-400">Progress</span>
+              <span className="font-semibold text-slate-900 dark:text-white">{Math.round(progress * 100)}%</span>
             </div>
-            <div className="w-28 bg-slate-200 h-1.5 rounded-full overflow-hidden mt-1">
+            <div className="w-24 bg-slate-200 dark:bg-slate-700 h-1.5 rounded-full overflow-hidden mt-0.5">
               <div 
-                className="bg-gradient-to-r from-rose-500 to-red-600 h-full rounded-full transition-all duration-300"
+                className="bg-red-600 dark:bg-red-500 h-full rounded-full transition-all duration-300"
                 style={{ width: `${Math.round(progress * 100)}%` }}
               />
             </div>
           </div>
 
-          <div className="h-6 w-[1px] bg-slate-200"></div>
+          <div className="h-5 w-[1px] bg-slate-200 dark:bg-slate-700"></div>
 
           <div className="flex items-center space-x-1.5">
-            <Clock className="w-3.5 h-3.5 text-amber-600" />
+            <Clock className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400" />
             <div className="text-left">
-              <div className="text-[9px] uppercase tracking-wider text-slate-500 font-mono">ETA</div>
-              <div className="text-xs font-mono font-bold text-slate-900 leading-tight">
+              <div className="text-[9px] uppercase tracking-wider text-slate-400 font-mono">Target ETA</div>
+              <div className="text-xs font-mono font-semibold text-slate-900 dark:text-white leading-tight">
                 {formatEta(amb?.eta_seconds)}
               </div>
             </div>

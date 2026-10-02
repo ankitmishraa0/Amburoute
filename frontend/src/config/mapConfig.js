@@ -1,37 +1,32 @@
 /**
- * 100% Free Open Map Providers for AmbuRoute (Red & White Theme)
- * Default: Clean Crisp Streets (OpenStreetMap / Esri Streets)
+ * Map Tile Providers for AmbuRoute CAD
  */
 
 export const FREE_MAP_LAYERS = [
   {
     id: 'osm_standard',
-    name: 'Clean Street Map (OpenStreetMap)',
-    icon: '🗺️',
+    name: 'OpenStreetMap Standard',
     url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
     maxZoom: 19
   },
   {
     id: 'esri_streets',
-    name: 'Urban Transit Navigation',
-    icon: '🏙️',
+    name: 'Esri World Street Map',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
     attribution: '&copy; Esri Street Map',
     maxZoom: 18
   },
   {
     id: 'esri_satellite',
-    name: 'Satellite Photorealistic HD',
-    icon: '🛰️',
+    name: 'Esri Satellite Imagery',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     attribution: '&copy; Esri &copy; Earthstar Geographics',
     maxZoom: 19
   },
   {
     id: 'esri_dark_gray',
-    name: 'Night Canvas Dark',
-    icon: '🌃',
+    name: 'Esri Dark Canvas',
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
     attribution: '&copy; Esri &copy; OpenStreetMap contributors',
     maxZoom: 18

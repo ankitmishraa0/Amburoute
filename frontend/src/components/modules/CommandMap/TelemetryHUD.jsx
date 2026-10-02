@@ -1,5 +1,5 @@
 import React from 'react';
-import { Gauge, Navigation, Clock, ShieldCheck, Zap, Radio } from 'lucide-react';
+import { Gauge, Navigation, Clock, ShieldCheck } from 'lucide-react';
 
 export default function TelemetryHUD({ ambulance, nextSignal }) {
   const speed = ambulance?.speed_kmh ?? 0;
@@ -8,77 +8,75 @@ export default function TelemetryHUD({ ambulance, nextSignal }) {
   const etaMin = Math.round(etaSec / 60);
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
       {/* 1. Velocity */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-3.5 flex items-center space-x-3 shadow-xs hover:border-rose-300 hover:shadow-md transition-all">
-        <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-600">
-          <Gauge className="w-5 h-5" />
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-3 flex items-center space-x-3 transition-colors">
+        <div className="p-2 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 shrink-0">
+          <Gauge className="w-4 h-4" />
         </div>
         <div>
-          <div className="text-[10px] uppercase tracking-wider text-slate-500 font-mono font-bold">
-            Vehicle Speed
+          <div className="text-[10px] uppercase tracking-wider text-slate-500 font-mono">
+            Ground Speed
           </div>
-          <div className="flex items-baseline space-x-1.5">
-            <span className="text-xl sm:text-2xl font-black font-mono text-slate-900">
+          <div className="flex items-baseline space-x-1">
+            <span className="text-xl font-bold font-mono text-slate-900 dark:text-white">
               {Math.round(speed)}
             </span>
-            <span className="text-xs text-slate-500 font-mono">KM/H</span>
+            <span className="text-[11px] text-slate-400 font-mono">km/h</span>
           </div>
         </div>
       </div>
 
       {/* 2. Distance Remaining */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-3.5 flex items-center space-x-3 shadow-xs hover:border-blue-300 hover:shadow-md transition-all">
-        <div className="p-2.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-600">
-          <Navigation className="w-5 h-5" />
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-3 flex items-center space-x-3 transition-colors">
+        <div className="p-2 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 shrink-0">
+          <Navigation className="w-4 h-4" />
         </div>
         <div>
-          <div className="text-[10px] uppercase tracking-wider text-slate-500 font-mono font-bold">
-            Distance to Target
+          <div className="text-[10px] uppercase tracking-wider text-slate-500 font-mono">
+            Destination Distance
           </div>
-          <div className="flex items-baseline space-x-1.5">
-            <span className="text-xl sm:text-2xl font-black font-mono text-slate-900">
+          <div className="flex items-baseline space-x-1">
+            <span className="text-xl font-bold font-mono text-slate-900 dark:text-white">
               {dist.toFixed(1)}
             </span>
-            <span className="text-xs text-slate-500 font-mono">KM</span>
+            <span className="text-[11px] text-slate-400 font-mono">km</span>
           </div>
         </div>
       </div>
 
       {/* 3. Estimated Arrival */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-3.5 flex items-center space-x-3 shadow-xs hover:border-amber-300 hover:shadow-md transition-all">
-        <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-600">
-          <Clock className="w-5 h-5" />
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-3 flex items-center space-x-3 transition-colors">
+        <div className="p-2 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 shrink-0">
+          <Clock className="w-4 h-4" />
         </div>
         <div>
-          <div className="text-[10px] uppercase tracking-wider text-slate-500 font-mono font-bold">
+          <div className="text-[10px] uppercase tracking-wider text-slate-500 font-mono">
             Estimated Arrival
           </div>
-          <div className="flex items-baseline space-x-1.5">
-            <span className="text-xl sm:text-2xl font-black font-mono text-amber-700">
+          <div className="flex items-baseline space-x-1">
+            <span className="text-xl font-bold font-mono text-slate-900 dark:text-white">
               {etaMin > 0 ? etaMin : '< 1'}
             </span>
-            <span className="text-xs text-slate-500 font-mono">MIN</span>
+            <span className="text-[11px] text-slate-400 font-mono">min</span>
           </div>
         </div>
       </div>
 
       {/* 4. Traffic Signal Preemption */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-3.5 flex items-center space-x-3 shadow-xs hover:border-emerald-300 hover:shadow-md transition-all">
-        <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-600">
-          <ShieldCheck className="w-5 h-5" />
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-3 flex items-center space-x-3 transition-colors">
+        <div className="p-2 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 shrink-0">
+          <ShieldCheck className="w-4 h-4" />
         </div>
-        <div>
-          <div className="text-[10px] uppercase tracking-wider text-slate-500 font-mono font-bold">
-            Signal Preemption
+        <div className="min-w-0 flex-1">
+          <div className="text-[10px] uppercase tracking-wider text-slate-500 font-mono">
+            Corridor Preemption
           </div>
-          <div className="flex items-center space-x-1.5">
-            <span className="text-sm sm:text-base font-bold text-emerald-700">
-              {nextSignal?.state === 'green_wave' ? 'Green Wave Clear' : 'Preempting Next'}
-            </span>
+          <div className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 truncate">
+            {nextSignal?.state === 'green_wave' ? 'Green Wave Clear' : 'Next Cycle Preempted'}
           </div>
-          <div className="text-[10px] text-slate-500 font-mono truncate max-w-[150px]">
-            {nextSignal ? nextSignal.name : 'All Signals Coordinated'}
+          <div className="text-[10px] text-slate-400 font-mono truncate">
+            {nextSignal ? nextSignal.name : 'All Intersections Synced'}
           </div>
         </div>
       </div>

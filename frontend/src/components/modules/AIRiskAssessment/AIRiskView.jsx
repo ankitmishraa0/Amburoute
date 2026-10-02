@@ -1,22 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  AlertTriangle, 
-  Activity, 
-  Heart, 
-  Zap, 
-  ShieldAlert, 
-  Thermometer, 
-  Wind, 
-  Sparkles,
-  CheckCircle,
-  Stethoscope,
-  Info,
-  Check
+  Stethoscope, 
+  Check, 
+  Activity,
+  Heart,
+  Wind
 } from 'lucide-react';
-import { soundFx } from '@/services/sound';
-import { calculateRiskAssessment, fetchSymptoms } from '@/services/api';
+import { calculateRiskAssessment } from '@/services/api';
 
-// Professional Clinical Symptoms List
 const CLINICAL_SYMPTOMS = [
   { name: 'Chest Pain (Crushing/Pressure)', category: 'Cardiac', critical: true },
   { name: 'Radiating Left Arm / Jaw Pain', category: 'Cardiac', critical: true },
@@ -75,7 +66,6 @@ export default function AIRiskView({ initialVitals, onAssessmentUpdated }) {
 
   const runAssessment = async (v) => {
     setIsCalculating(true);
-    soundFx.playClick();
     try {
       const res = await calculateRiskAssessment({
         heart_rate: v.heart_rate,
@@ -100,7 +90,6 @@ export default function AIRiskView({ initialVitals, onAssessmentUpdated }) {
   };
 
   const toggleSymptom = (symptomName) => {
-    soundFx.playClick();
     const current = vitals.symptoms || [];
     let updated;
     if (current.includes(symptomName)) {
@@ -114,7 +103,6 @@ export default function AIRiskView({ initialVitals, onAssessmentUpdated }) {
   };
 
   const adjustVital = (key, delta) => {
-    soundFx.playClick();
     const updated = {
       ...vitals,
       [key]: Math.max(1, (vitals[key] || 0) + delta)
@@ -124,50 +112,50 @@ export default function AIRiskView({ initialVitals, onAssessmentUpdated }) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       
       {/* Top Banner */}
-      <div className="bg-white p-6 rounded-3xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
-        <div className="flex items-center space-x-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-2xl shadow-xs">
-            🩺
+      <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-lg border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+        <div className="flex items-center space-x-3">
+          <div className="w-9 h-9 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 flex items-center justify-center font-bold shrink-0">
+            <Stethoscope className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-xl font-black text-slate-900 flex items-center space-x-2">
-              <span>Clinical Triage & Patient Risk Assessment</span>
-              <span className="text-xs bg-rose-50 border border-rose-200 text-rose-700 px-2 py-0.5 rounded-full font-bold">
-                ESI LEVEL {assessment.esi_level}
+            <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center space-x-2">
+              <span>Clinical Triage & Decision Support (CDS)</span>
+              <span className="text-xs bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded font-mono">
+                ESI Level {assessment.esi_level}
               </span>
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Machine Learning Clinical Decision Support (CDS) for pre-arrival emergency stratifications.
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Protocol-based physiological scoring and pre-arrival acuity stratification.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center space-x-2 px-4 py-2 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-black text-rose-700">
-          <Sparkles className="w-4 h-4 text-rose-600" />
-          <span>Real-Time CDS Active</span>
+        <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-700 dark:text-slate-300">
+          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span>Triage Engine Active</span>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         
         {/* Left Form: Symptoms & Vitals (7 cols) */}
-        <div className="lg:col-span-7 bg-white p-6 rounded-3xl border border-slate-200 space-y-6 shadow-xs">
+        <div className="lg:col-span-7 bg-white dark:bg-slate-900 p-5 rounded-lg border border-slate-200 dark:border-slate-800 space-y-5 shadow-sm">
           
           {/* Section 1: Presenting Symptoms */}
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-black text-slate-900 flex items-center space-x-2">
-                <span>Presenting Patient Symptoms:</span>
+              <label className="text-xs font-semibold text-slate-900 dark:text-white uppercase font-mono tracking-wider">
+                Presenting Symptoms:
               </label>
-              <span className="text-xs font-mono font-bold text-rose-700 bg-rose-50 px-2.5 py-1 rounded-xl border border-rose-200">
-                {vitals.symptoms.length} Selected
+              <span className="text-[11px] font-mono text-slate-500">
+                {vitals.symptoms.length} selected
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-72 overflow-y-auto p-1 scrollbar-none">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-64 overflow-y-auto p-0.5 scrollbar-none">
               {CLINICAL_SYMPTOMS.map((sym) => {
                 const isSelected = vitals.symptoms.includes(sym.name);
                 return (
@@ -175,19 +163,19 @@ export default function AIRiskView({ initialVitals, onAssessmentUpdated }) {
                     type="button"
                     key={sym.name}
                     onClick={() => toggleSymptom(sym.name)}
-                    className={`p-3 rounded-2xl text-left transition-all cursor-pointer flex items-center justify-between border ${
+                    className={`p-2.5 rounded-md text-left transition-colors flex items-center justify-between border ${
                       isSelected
                         ? sym.critical
-                          ? 'bg-rose-50 border-rose-600 text-rose-900 shadow-xs'
-                          : 'bg-rose-50/60 border-rose-400 text-slate-900 shadow-xs'
-                        : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+                          ? 'bg-red-50 dark:bg-red-950/40 border-red-300 dark:border-red-900 text-red-900 dark:text-red-200'
+                          : 'bg-slate-100 dark:bg-slate-800 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white'
+                        : 'bg-white dark:bg-slate-850 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50'
                     }`}
                   >
                     <div className="min-w-0 pr-2">
-                      <div className="text-xs font-bold leading-snug">{sym.name}</div>
+                      <div className="text-xs font-medium leading-snug">{sym.name}</div>
                       <div className="text-[10px] text-slate-400 font-mono mt-0.5">{sym.category}</div>
                     </div>
-                    {isSelected && <Check className="w-4 h-4 text-rose-600 shrink-0" />}
+                    {isSelected && <Check className="w-3.5 h-3.5 text-slate-900 dark:text-white shrink-0" />}
                   </button>
                 );
               })}
@@ -195,42 +183,46 @@ export default function AIRiskView({ initialVitals, onAssessmentUpdated }) {
           </div>
 
           {/* Section 2: Physiological Vitals Stepper */}
-          <div className="space-y-3 pt-2 border-t border-slate-100">
-            <label className="text-sm font-black text-slate-900 flex items-center space-x-2">
-              <span>Physiological Vital Signs:</span>
+          <div className="space-y-2.5 pt-3 border-t border-slate-100 dark:border-slate-800">
+            <label className="text-xs font-semibold text-slate-900 dark:text-white uppercase font-mono tracking-wider">
+              Physiological Vital Signs:
             </label>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
               
               {/* Heart Rate */}
-              <div className="bg-rose-50 border border-rose-200 p-3 rounded-2xl space-y-1.5 text-center">
-                <div className="text-[11px] font-bold text-rose-700">Heart Rate (HR)</div>
-                <div className="text-2xl font-black text-slate-900">{vitals.heart_rate} <span className="text-xs font-normal text-slate-500">BPM</span></div>
-                <div className="flex items-center justify-center space-x-2 pt-1">
-                  <button onClick={() => adjustVital('heart_rate', -5)} className="w-8 h-8 rounded-xl bg-white hover:bg-slate-100 text-slate-800 font-black flex items-center justify-center text-sm border border-rose-200 cursor-pointer">-</button>
-                  <button onClick={() => adjustVital('heart_rate', 5)} className="w-8 h-8 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black flex items-center justify-center text-sm cursor-pointer">+</button>
+              <div className="bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 p-3 rounded-md space-y-1 text-center">
+                <div className="text-[11px] font-mono text-slate-500">Heart Rate (HR)</div>
+                <div className="text-xl font-bold font-mono text-slate-900 dark:text-white">
+                  {vitals.heart_rate} <span className="text-[11px] text-slate-400 font-normal">bpm</span>
+                </div>
+                <div className="flex items-center justify-center space-x-1.5 pt-1">
+                  <button onClick={() => adjustVital('heart_rate', -5)} className="w-7 h-7 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-mono font-semibold hover:bg-slate-100">-</button>
+                  <button onClick={() => adjustVital('heart_rate', 5)} className="w-7 h-7 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-mono font-semibold hover:bg-slate-100">+</button>
                 </div>
               </div>
 
               {/* Blood Pressure */}
-              <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl space-y-1.5 text-center">
-                <div className="text-[11px] font-bold text-slate-700">Blood Pressure (BP)</div>
-                <div className="text-2xl font-black text-slate-900">{vitals.systolic_bp}/{vitals.diastolic_bp}</div>
-                <div className="flex items-center justify-center space-x-2 pt-1">
-                  <button onClick={() => adjustVital('systolic_bp', -10)} className="w-8 h-8 rounded-xl bg-white hover:bg-slate-100 text-slate-800 font-black flex items-center justify-center text-sm border border-slate-200 cursor-pointer">-</button>
-                  <button onClick={() => adjustVital('systolic_bp', 10)} className="w-8 h-8 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-black flex items-center justify-center text-sm cursor-pointer">+</button>
+              <div className="bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 p-3 rounded-md space-y-1 text-center">
+                <div className="text-[11px] font-mono text-slate-500">Blood Pressure (BP)</div>
+                <div className="text-xl font-bold font-mono text-slate-900 dark:text-white">
+                  {vitals.systolic_bp}/{vitals.diastolic_bp}
+                </div>
+                <div className="flex items-center justify-center space-x-1.5 pt-1">
+                  <button onClick={() => adjustVital('systolic_bp', -10)} className="w-7 h-7 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-mono font-semibold hover:bg-slate-100">-</button>
+                  <button onClick={() => adjustVital('systolic_bp', 10)} className="w-7 h-7 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-mono font-semibold hover:bg-slate-100">+</button>
                 </div>
               </div>
 
               {/* Oxygen SpO2 */}
-              <div className="bg-blue-50 border border-blue-200 p-3 rounded-2xl space-y-1.5 text-center col-span-2 sm:col-span-1">
-                <div className="text-[11px] font-bold text-blue-700">Oxygen (SpO₂)</div>
-                <div className={`text-2xl font-black ${vitals.spo2 < 90 ? 'text-rose-600' : 'text-blue-700'}`}>
+              <div className="bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 p-3 rounded-md space-y-1 text-center col-span-2 sm:col-span-1">
+                <div className="text-[11px] font-mono text-slate-500">Oxygen (SpO₂)</div>
+                <div className={`text-xl font-bold font-mono ${vitals.spo2 < 90 ? 'text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-white'}`}>
                   {vitals.spo2}%
                 </div>
-                <div className="flex items-center justify-center space-x-2 pt-1">
-                  <button onClick={() => adjustVital('spo2', -2)} className="w-8 h-8 rounded-xl bg-white hover:bg-slate-100 text-slate-800 font-black flex items-center justify-center text-sm border border-blue-200 cursor-pointer">-</button>
-                  <button onClick={() => adjustVital('spo2', 2)} className="w-8 h-8 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black flex items-center justify-center text-sm cursor-pointer">+</button>
+                <div className="flex items-center justify-center space-x-1.5 pt-1">
+                  <button onClick={() => adjustVital('spo2', -2)} className="w-7 h-7 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-mono font-semibold hover:bg-slate-100">-</button>
+                  <button onClick={() => adjustVital('spo2', 2)} className="w-7 h-7 rounded border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-xs font-mono font-semibold hover:bg-slate-100">+</button>
                 </div>
               </div>
 
@@ -240,49 +232,49 @@ export default function AIRiskView({ initialVitals, onAssessmentUpdated }) {
         </div>
 
         {/* Right Output: Risk Assessment Card (5 cols) */}
-        <div className="lg:col-span-5 space-y-5">
-          <div className="bg-white p-6 rounded-3xl border border-slate-200 space-y-5 shadow-xs">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center space-x-2">
-                <span>AI Clinical Stratification</span>
+        <div className="lg:col-span-5 space-y-4">
+          <div className="bg-white dark:bg-slate-900 p-5 rounded-lg border border-slate-200 dark:border-slate-800 space-y-4 shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <h3 className="text-xs font-semibold text-slate-900 dark:text-white uppercase font-mono tracking-wider">
+                Clinical Stratification
               </h3>
-              <span className="text-xs font-mono font-bold text-rose-700 bg-rose-50 px-2.5 py-1 rounded-xl border border-rose-200">
+              <span className="text-[11px] font-mono font-semibold text-red-600 dark:text-red-400 px-2 py-0.5 rounded bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900">
                 {assessment.urgency_class}
               </span>
             </div>
 
             {/* Risk Gauge */}
-            <div className="p-4 rounded-2xl bg-rose-50/50 border border-rose-200 space-y-2 text-center">
-              <div className="text-xs text-slate-500 font-mono uppercase tracking-wider">
+            <div className="p-4 rounded-md bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 space-y-1.5 text-center">
+              <div className="text-[11px] text-slate-500 font-mono uppercase">
                 Decompensation Risk Score
               </div>
-              <div className="text-4xl font-black text-rose-600 font-mono">
-                {assessment.risk_score} / 100
+              <div className="text-3xl font-bold font-mono text-red-600 dark:text-red-400">
+                {assessment.risk_score} <span className="text-xs text-slate-400 font-normal">/ 100</span>
               </div>
-              <div className="text-xs text-slate-700 font-medium">
-                Primary Indication: <strong className="text-slate-900">{assessment.primary_condition}</strong>
+              <div className="text-xs text-slate-600 dark:text-slate-400 font-medium">
+                Primary Indication: <strong className="text-slate-900 dark:text-white font-semibold">{assessment.primary_condition}</strong>
               </div>
             </div>
 
             {/* Recommended Care Path */}
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1.5">
-              <div className="text-xs font-bold text-slate-900 uppercase tracking-wide">
-                Protocol Recommendation:
+            <div className="p-3.5 rounded-md bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 space-y-1">
+              <div className="text-[10px] font-mono uppercase text-slate-500">
+                Recommended Care Pathway
               </div>
-              <div className="text-xs font-semibold text-slate-700">
+              <div className="text-xs font-medium text-slate-800 dark:text-slate-200">
                 {assessment.recommended_care_path}
               </div>
             </div>
 
             {/* Rationale Bullet Points */}
-            <div className="space-y-2">
-              <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                Clinical Rationale:
+            <div className="space-y-1.5">
+              <div className="text-[10px] font-mono uppercase text-slate-500">
+                Clinical Rationale
               </div>
-              <ul className="space-y-1.5">
+              <ul className="space-y-1">
                 {(assessment.triage_rationale || []).map((r, i) => (
-                  <li key={i} className="text-xs text-slate-700 flex items-start space-x-2">
-                    <span className="text-rose-600 font-bold mt-0.5">•</span>
+                  <li key={i} className="text-xs text-slate-600 dark:text-slate-400 flex items-start space-x-2">
+                    <span className="text-slate-400">•</span>
                     <span>{r}</span>
                   </li>
                 ))}

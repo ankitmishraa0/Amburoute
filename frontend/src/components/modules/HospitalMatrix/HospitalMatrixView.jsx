@@ -3,18 +3,16 @@ import {
   Building2, 
   MapPin, 
   ArrowRight, 
-  CheckCircle2, 
-  Sparkles, 
   PhoneCall, 
   Check,
   Bed,
   Clock,
-  Award
+  Activity,
+  BarChart2
 } from 'lucide-react';
-import { soundFx } from '@/services/sound';
 import { routeToHospital } from '@/services/api';
 
-// Interactive Radar Multi-Metric Comparison Chart styled for Red & White Theme
+// Interactive Radar Multi-Metric Comparison Chart
 function HospitalRadarSVG({ topHospitals = [] }) {
   if (!topHospitals.length) return null;
 
@@ -23,15 +21,15 @@ function HospitalRadarSVG({ topHospitals = [] }) {
     { key: 'trauma_readiness', label: 'Trauma Bay' },
     { key: 'bed_availability', label: 'ICU Beds' },
     { key: 'specialist_coverage', label: 'Specialists' },
-    { key: 'queue_efficiency', label: 'Zero Wait' },
+    { key: 'queue_efficiency', label: 'Efficiency' },
   ];
 
-  const size = 260;
+  const size = 240;
   const center = size / 2;
-  const radius = 95;
+  const radius = 80;
   const angleStep = (Math.PI * 2) / categories.length;
 
-  const colors = ['#E11D48', '#2563EB', '#F59E0B'];
+  const colors = ['#DC2626', '#2563EB', '#D97706'];
 
   const getPoint = (val, idx) => {
     const r = (val / 100) * radius;
@@ -43,7 +41,7 @@ function HospitalRadarSVG({ topHospitals = [] }) {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center p-4">
+    <div className="flex flex-col items-center justify-center p-2">
       <svg width={size} height={size} className="overflow-visible">
         {/* Background Radar Webs */}
         {[0.25, 0.5, 0.75, 1.0].map((level, lvlIdx) => (
@@ -56,8 +54,9 @@ function HospitalRadarSVG({ topHospitals = [] }) {
               })
               .join(' ')}
             fill="none"
-            stroke="#CBD5E1"
+            stroke="#cbd5e1"
             strokeWidth="1"
+            strokeDasharray={lvlIdx < 3 ? '2 2' : 'none'}
           />
         ))}
 
@@ -66,20 +65,20 @@ function HospitalRadarSVG({ topHospitals = [] }) {
           const angle = i * angleStep - Math.PI / 2;
           const x = center + radius * Math.cos(angle);
           const y = center + radius * Math.sin(angle);
-          const labelX = center + (radius + 22) * Math.cos(angle);
-          const labelY = center + (radius + 18) * Math.sin(angle);
+          const labelX = center + (radius + 20) * Math.cos(angle);
+          const labelY = center + (radius + 14) * Math.sin(angle);
           return (
             <g key={i}>
-              <line x1={center} y1={center} x2={x} y2={y} stroke="#E2E8F0" strokeWidth="1" />
+              <line x1={center} y1={center} x2={x} y2={y} stroke="#e2e8f0" strokeWidth="1" />
               <text
                 x={labelX}
                 y={labelY}
                 textAnchor="middle"
                 dominantBaseline="central"
-                fontSize="10"
-                fontFamily="sans-serif"
-                fontWeight="bold"
-                fill="#64748B"
+                fontSize="9"
+                fontFamily="inherit"
+                fontWeight="500"
+                fill="#64748b"
               >
                 {cat.label}
               </text>
@@ -102,9 +101,9 @@ function HospitalRadarSVG({ topHospitals = [] }) {
             <g key={h.id}>
               <polygon
                 points={points}
-                fill={`${colors[hIdx]}20`}
+                fill={`${colors[hIdx]}18`}
                 stroke={colors[hIdx]}
-                strokeWidth="2.5"
+                strokeWidth="1.5"
               />
             </g>
           );
@@ -112,11 +111,11 @@ function HospitalRadarSVG({ topHospitals = [] }) {
       </svg>
 
       {/* Legend */}
-      <div className="flex flex-wrap items-center justify-center gap-3 mt-4 text-xs font-bold">
+      <div className="flex flex-wrap items-center justify-center gap-2 mt-3 text-xs">
         {topHospitals.slice(0, 3).map((h, idx) => (
-          <div key={h.id} className="flex items-center space-x-1.5 bg-slate-50 border border-slate-200 px-2.5 py-1 rounded-lg">
-            <span className="w-3 h-3 rounded-full" style={{ backgroundColor: colors[idx] }}></span>
-            <span className="text-slate-800">{h.short_name}</span>
+          <div key={h.id} className="flex items-center space-x-1.5 bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 px-2 py-0.5 rounded text-[11px]">
+            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: colors[idx] }}></span>
+            <span className="text-slate-700 dark:text-slate-300 font-medium">{h.short_name}</span>
           </div>
         ))}
       </div>
@@ -133,7 +132,6 @@ export default function HospitalMatrixView({
   const [isRouting, setIsRouting] = useState(false);
 
   const handleRouteTo = async (hospitalId) => {
-    soundFx.playReroute();
     setIsRouting(true);
     setSelectedHospId(hospitalId);
     try {
@@ -147,37 +145,37 @@ export default function HospitalMatrixView({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       
       {/* Header Banner */}
-      <div className="bg-white p-6 rounded-3xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
-        <div className="flex items-center space-x-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center text-2xl shadow-xs">
-            🏥
+      <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-lg border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+        <div className="flex items-center space-x-3">
+          <div className="w-9 h-9 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 flex items-center justify-center font-bold shrink-0">
+            <Building2 className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-xl font-black text-slate-900 flex items-center space-x-2">
-              <span>Hospital Recommendation Matrix</span>
-              <span className="text-xs bg-rose-50 border border-rose-200 text-rose-600 px-2 py-0.5 rounded-full font-bold">
-                AI MATCH
+            <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center space-x-2">
+              <span>Hospital Allocation Matrix</span>
+              <span className="text-xs bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded font-mono">
+                MCDM Scored
               </span>
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Ranked automatically by transit duration, real-time ICU bed vacancy, trauma capability, and ER intake speed.
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              Ranked dynamically by transit duration, real-time ICU bed vacancy, trauma specialty capabilities, and intake speed.
             </p>
           </div>
         </div>
 
-        <div className="flex items-center space-x-2 px-4 py-2 rounded-2xl bg-rose-50 border border-rose-200 text-xs font-black text-rose-700">
-          <Sparkles className="w-4 h-4 text-rose-600" />
-          <span>One-Click Dynamic Rerouting</span>
+        <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 text-xs font-mono text-slate-700 dark:text-slate-300">
+          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+          <span>Dynamic Rerouting Enabled</span>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         
         {/* Left 2 Cols: Ranked Hospital Cards */}
-        <div className="lg:col-span-2 space-y-4">
+        <div className="lg:col-span-2 space-y-3">
           {hospitals.map((h, idx) => {
             const isTarget = h.id === selectedHospId;
             const isRank1 = idx === 0;
@@ -185,102 +183,98 @@ export default function HospitalMatrixView({
             return (
               <div
                 key={h.id}
-                className={`p-5 sm:p-6 rounded-3xl border transition-all duration-300 ${
+                className={`p-4 sm:p-5 rounded-lg border transition-colors ${
                   isTarget
-                    ? 'bg-rose-50/40 border-2 border-rose-600 shadow-md shadow-rose-600/10'
-                    : 'bg-white border-slate-200 hover:border-slate-300 shadow-xs'
+                    ? 'bg-slate-50 dark:bg-slate-850 border-slate-900 dark:border-white shadow-sm'
+                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
                 }`}
               >
-                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-5">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                   
                   {/* Hospital Info */}
-                  <div className="space-y-3 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className={`px-3 py-1 rounded-xl text-xs font-black flex items-center space-x-1 ${
-                        isRank1 ? 'bg-rose-600 text-white shadow-xs' : 'bg-slate-100 text-slate-700'
+                  <div className="space-y-2 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className={`px-2 py-0.5 rounded text-[11px] font-mono font-medium ${
+                        isRank1 ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300'
                       }`}>
-                        <span>🏆</span>
-                        <span>Rank #{idx + 1} Best Match</span>
+                        Rank #{idx + 1}
                       </span>
 
-                      <span className="text-xs font-bold text-slate-700 bg-slate-100 px-2.5 py-1 rounded-xl border border-slate-200 flex items-center space-x-1">
-                        <span>🚨</span>
-                        <span>{h.trauma_level}</span>
+                      <span className="text-[11px] font-mono text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+                        {h.trauma_level}
                       </span>
 
                       {h.cath_lab_ready && (
-                        <span className="text-xs font-bold text-rose-700 bg-rose-50 px-2.5 py-1 rounded-xl border border-rose-200 flex items-center space-x-1">
-                          <span>❤️</span>
-                          <span>24/7 Cath Lab Ready</span>
+                        <span className="text-[11px] font-mono text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 px-2 py-0.5 rounded border border-red-200 dark:border-red-900">
+                          24/7 Cath Lab
                         </span>
                       )}
                     </div>
 
                     <div>
-                      <h3 className="text-lg sm:text-xl font-black text-slate-900 flex items-center space-x-2">
-                        <span>{h.name}</span>
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-white">
+                        {h.name}
                       </h3>
-                      <p className="text-xs text-slate-500 flex items-center space-x-1 mt-1">
-                        <MapPin className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+                      <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center space-x-1 mt-0.5">
+                        <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                         <span>{h.address}</span>
                       </p>
                     </div>
 
                     {/* Metric Badges */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pt-1">
-                      <div className="bg-emerald-50 border border-emerald-200 p-2.5 rounded-2xl flex items-center space-x-2.5">
-                        <span className="text-xl">🛏️</span>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1 font-mono">
+                      <div className="bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 p-2 rounded flex items-center space-x-2">
+                        <Bed className="w-3.5 h-3.5 text-slate-500" />
                         <div>
-                          <div className="text-[10px] text-emerald-800 font-bold uppercase">ICU Beds Available</div>
-                          <div className="text-sm font-black text-emerald-700">{h.icu_beds_available} Beds Open</div>
+                          <div className="text-[9px] text-slate-400 uppercase">ICU Beds</div>
+                          <div className="text-xs font-semibold text-slate-900 dark:text-white">{h.icu_beds_available} Open</div>
                         </div>
                       </div>
 
-                      <div className="bg-amber-50 border border-amber-200 p-2.5 rounded-2xl flex items-center space-x-2.5">
-                        <span className="text-xl">⏱️</span>
+                      <div className="bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 p-2 rounded flex items-center space-x-2">
+                        <Clock className="w-3.5 h-3.5 text-slate-500" />
                         <div>
-                          <div className="text-[10px] text-amber-800 font-bold uppercase">Transit Duration</div>
-                          <div className="text-sm font-black text-amber-700">{h.travel_time_min} Mins</div>
+                          <div className="text-[9px] text-slate-400 uppercase">Transit Time</div>
+                          <div className="text-xs font-semibold text-slate-900 dark:text-white">{h.travel_time_min} min</div>
                         </div>
                       </div>
 
-                      <div className="bg-rose-50 border border-rose-200 p-2.5 rounded-2xl flex items-center space-x-2.5 col-span-2 sm:col-span-1">
-                        <span className="text-xl">⭐</span>
+                      <div className="bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 p-2 rounded flex items-center space-x-2 col-span-2 sm:col-span-1">
+                        <Activity className="w-3.5 h-3.5 text-slate-500" />
                         <div>
-                          <div className="text-[10px] text-rose-800 font-bold uppercase">Clinical Match</div>
-                          <div className="text-sm font-black text-rose-700">{h.composite_score} / 100</div>
+                          <div className="text-[9px] text-slate-400 uppercase">Match Score</div>
+                          <div className="text-xs font-semibold text-slate-900 dark:text-white">{h.composite_score}%</div>
                         </div>
                       </div>
                     </div>
                   </div>
 
                   {/* Route Action Button */}
-                  <div className="flex flex-col sm:items-end justify-between space-y-3 shrink-0">
+                  <div className="flex flex-col sm:items-end justify-between space-y-2 shrink-0">
                     <button
                       onClick={() => handleRouteTo(h.id)}
                       disabled={isTarget || isRouting}
-                      className={`w-full sm:w-auto px-5 py-3 rounded-2xl font-black text-xs transition-all flex items-center justify-center space-x-2 cursor-pointer shadow-xs ${
+                      className={`w-full sm:w-auto px-4 py-2 rounded-md font-medium text-xs transition-colors flex items-center justify-center space-x-1.5 ${
                         isTarget
-                          ? 'bg-rose-600 text-white shadow-md shadow-rose-600/30 cursor-default'
-                          : 'bg-slate-900 hover:bg-slate-800 text-white'
+                          ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-semibold cursor-default'
+                          : 'bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-900 dark:text-white'
                       }`}
                     >
                       {isTarget ? (
                         <>
-                          <Check className="w-4 h-4" />
-                          <span>Destination Active</span>
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Active Destination</span>
                         </>
                       ) : (
                         <>
-                          <ArrowRight className="w-4 h-4" />
-                          <span>Route Ambulance Here</span>
+                          <span>Route Here</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
                         </>
                       )}
                     </button>
 
-                    <div className="text-xs text-slate-500 flex items-center space-x-1">
-                      <span>Emergency Desk:</span>
-                      <strong className="text-slate-900 font-mono">{h.contact_phone}</strong>
+                    <div className="text-[11px] text-slate-500 font-mono">
+                      Desk: <strong className="text-slate-700 dark:text-slate-300">{h.contact_phone}</strong>
                     </div>
                   </div>
 
@@ -291,25 +285,25 @@ export default function HospitalMatrixView({
         </div>
 
         {/* Right Col: Radar Comparison Chart & Emergency Contacts */}
-        <div className="space-y-6">
-          <div className="bg-white p-5 rounded-3xl border border-slate-200 space-y-3 shadow-xs">
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 border-b border-slate-100 pb-2 flex items-center space-x-1.5">
-              <span>📊</span>
-              <span>Comparative Facility Radar</span>
+        <div className="space-y-4">
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-lg border border-slate-200 dark:border-slate-800 space-y-2 shadow-sm">
+            <h3 className="text-xs font-mono font-semibold uppercase text-slate-700 dark:text-slate-300 border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center space-x-1.5">
+              <BarChart2 className="w-3.5 h-3.5 text-slate-500" />
+              <span>Facility Metric Comparison</span>
             </h3>
             <HospitalRadarSVG topHospitals={hospitals} />
           </div>
 
-          <div className="bg-white p-5 rounded-3xl border border-slate-200 space-y-3 shadow-xs">
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 border-b border-slate-100 pb-2 flex items-center space-x-2">
-              <PhoneCall className="w-4 h-4 text-rose-600" />
-              <span>Direct Hospital Despatch Lines</span>
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-lg border border-slate-200 dark:border-slate-800 space-y-2.5 shadow-sm">
+            <h3 className="text-xs font-mono font-semibold uppercase text-slate-700 dark:text-slate-300 border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center space-x-1.5">
+              <PhoneCall className="w-3.5 h-3.5 text-slate-500" />
+              <span>Direct Emergency Despatch</span>
             </h3>
-            <div className="space-y-2 text-xs font-mono">
+            <div className="space-y-1.5 text-xs font-mono">
               {hospitals.slice(0, 5).map((h) => (
-                <div key={h.id} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-                  <span className="text-slate-800 font-bold truncate max-w-[150px]">{h.short_name}</span>
-                  <a href={`tel:${h.contact_phone}`} className="text-rose-600 font-bold bg-rose-50 px-2 py-1 rounded-lg border border-rose-200 hover:bg-rose-100">
+                <div key={h.id} className="flex items-center justify-between p-2 rounded bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800">
+                  <span className="text-slate-800 dark:text-slate-200 truncate max-w-[150px]">{h.short_name}</span>
+                  <a href={`tel:${h.contact_phone}`} className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
                     {h.contact_phone}
                   </a>
                 </div>

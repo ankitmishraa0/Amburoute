@@ -1,24 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Radio, 
-  Volume2, 
-  VolumeX, 
-  MapPin, 
-  Building2, 
-  Stethoscope, 
-  Presentation, 
   Navigation,
-  HeartPulse,
   Signal,
-  Activity,
-  Layers,
-  Siren,
-  KeyRound,
-  UserCheck,
-  Crown,
+  HeartPulse,
+  Stethoscope,
+  Building2,
+  Shield,
+  User,
   LogOut,
   Sun,
-  Moon
+  Moon,
+  Volume2,
+  VolumeX,
+  Info,
+  Activity
 } from 'lucide-react';
 import { soundFx } from '@/services/sound';
 
@@ -50,189 +45,143 @@ export default function Header({
   const handleToggleMute = () => {
     const muted = soundFx.toggleMute();
     setIsMuted(muted);
-    if (!muted) soundFx.playClick();
   };
 
-  // Role-Specific Interface Filter (RBAC View Restriction):
-  // - Ambulance Driver: ONLY sees Live Dispatch Map & Hospital Bed Directory
-  // - Traffic Police (ITMS/TCS): ONLY sees Traffic Preemption & Green Wave
-  // - Hospital ER Staff: ONLY sees ER Trauma Bay, Clinical Triage & Beds
-  // - Super Admin: Sees EVERYTHING (Full System Root Control across all modules)
   const role = currentUser?.role || currentUser?.id || 'driver';
 
   const allNavItems = [
-    { id: 'command_map', icon: Navigation, label: 'Live Dispatch Map', sub: 'Ambulance GPS', roles: ['driver', 'admin'] },
-    { id: 'signals', icon: Signal, label: 'Traffic Preemption', sub: 'Green Wave ITMS', roles: ['traffic', 'admin'] },
-    { id: 'handoff', icon: HeartPulse, label: 'ER Trauma Bay', sub: 'Hospital Screen', roles: ['hospital', 'admin'] },
-    { id: 'triage', icon: Stethoscope, label: 'Clinical Triage', sub: 'Patient Risk AI', roles: ['hospital', 'admin'] },
-    { id: 'hospitals', icon: Building2, label: 'Hospital Directory', sub: 'AI Match & Beds', roles: ['driver', 'hospital', 'admin'] },
-    { id: 'admin_panel', icon: Crown, label: 'Super Admin Deck', sub: 'Root Control Mode', roles: ['admin'] },
+    { id: 'command_map', icon: Navigation, label: 'Dispatch Map', sub: 'Live Telemetry', roles: ['driver', 'admin'] },
+    { id: 'signals', icon: Signal, label: 'Traffic Preemption', sub: 'V2I Corridor', roles: ['traffic', 'admin'] },
+    { id: 'handoff', icon: HeartPulse, label: 'Trauma Intake', sub: 'ER Telemetry', roles: ['hospital', 'admin'] },
+    { id: 'triage', icon: Stethoscope, label: 'Clinical Triage', sub: 'Decision Support', roles: ['hospital', 'admin'] },
+    { id: 'hospitals', icon: Building2, label: 'Hospital Directory', sub: 'Bed Matrix', roles: ['driver', 'hospital', 'admin'] },
+    { id: 'admin_panel', icon: Shield, label: 'Admin Console', sub: 'System Ops', roles: ['admin'] },
   ];
 
   const navItems = allNavItems.filter(item => item.roles.includes(role));
 
   return (
-    <header className="border-b border-slate-200 bg-white/98 backdrop-blur-md sticky top-0 z-30 shadow-xs transition-colors duration-200">
-      {/* Top Banner Bar */}
-      <div className="max-w-[1780px] mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3">
+    <header className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 sticky top-0 z-30 transition-colors">
+      {/* Top Console Bar */}
+      <div className="max-w-[1780px] mx-auto px-4 sm:px-6 py-2 flex items-center justify-between gap-3">
         
         {/* Left: Brand Identity */}
         <div className="flex items-center space-x-3 shrink-0">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-rose-600 to-red-600 flex items-center justify-center text-lg text-white shadow-md shadow-rose-600/25">
-            🚑
+          <div className="w-8 h-8 rounded-md bg-red-600 dark:bg-red-500 text-white flex items-center justify-center font-bold">
+            <Activity className="w-4 h-4" />
           </div>
           <div>
             <div className="flex items-center space-x-2">
-              <span className="text-xl sm:text-2xl font-black tracking-wider text-slate-900">
-                AMBU<span className="text-rose-600">ROUTE</span>
+              <span className="text-base font-bold tracking-tight text-slate-900 dark:text-white">
+                AmbuRoute <span className="text-red-600 dark:text-red-500 text-xs font-mono font-medium ml-1">CAD</span>
               </span>
-              <span className="text-[10px] uppercase font-black tracking-widest px-2 py-0.5 rounded-md bg-rose-50 border border-rose-200 text-rose-600 hidden sm:inline-block">
-                EMERGENCY OS
+              <span className="text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hidden sm:inline-block">
+                Emergency Dispatch
               </span>
             </div>
-            <p className="text-[11px] text-slate-500 font-medium tracking-tight hidden md:flex items-center space-x-2">
-              <span>Dynamic Routing</span>
-              <span>•</span>
-              <span>V2I Traffic Clearance</span>
-              <span>•</span>
-              <span>Hospital Matrix</span>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-normal hidden md:block">
+              Dynamic CAD routing, V2I corridor preemption & ER telemetry
             </p>
           </div>
         </div>
 
-        {/* Center: Live Mission Status Badge */}
-        <div className="hidden lg:flex items-center space-x-3 bg-rose-50 border border-rose-200 px-4 py-1.5 rounded-full">
+        {/* Center: Live Mission Status */}
+        <div className="hidden lg:flex items-center space-x-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-3 py-1 rounded-md">
           <div className="flex items-center space-x-2">
-            <span className="relative flex h-2.5 w-2.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-600 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-600"></span>
-            </span>
-            <span className="text-xs font-bold uppercase tracking-wider text-rose-800">
-              Code-1 Emergency Active
+            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+            <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
+              CAD Link Active
             </span>
           </div>
-          <div className="h-3 w-[1px] bg-rose-200"></div>
-          <div className="text-xs font-mono text-slate-700 font-bold">
-            {timeStr}
+          <div className="h-3 w-[1px] bg-slate-200 dark:bg-slate-700"></div>
+          <div className="text-xs font-mono text-slate-600 dark:text-slate-400">
+            UTC {timeStr}
           </div>
         </div>
 
-        {/* Right: User Role Badge, Theme Switcher, Logout, Pitch Modal & Sound Control */}
-        <div className="flex items-center space-x-1 sm:space-x-2 shrink-0 justify-end">
+        {/* Right: Controls & Role Switcher */}
+        <div className="flex items-center space-x-1.5 shrink-0 justify-end">
           
-          {/* User Role Badge */}
-          <div
-            onClick={onOpenRoleModal}
-            className="flex items-center space-x-1.5 sm:space-x-2 px-2 sm:px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-all shadow-xs cursor-pointer group"
-            title="Click to switch operator role or manage authentication"
-          >
-            <div className={`p-1.5 rounded-lg text-white shrink-0 ${
-              (currentUser?.role === 'admin' || currentUser?.id === 'admin') ? 'bg-amber-600 shadow-amber-500/20' :
-              (currentUser?.role === 'hospital' || currentUser?.id === 'hospital') ? 'bg-blue-600 shadow-blue-500/20' :
-              (currentUser?.role === 'traffic' || currentUser?.id === 'traffic') ? 'bg-emerald-600 shadow-emerald-500/20' :
-              'bg-rose-600 shadow-rose-500/20'
-            }`}>
-              {(currentUser?.role === 'admin' || currentUser?.id === 'admin') ? <Crown className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
-            </div>
-            <div className="text-left leading-tight hidden xs:block sm:block">
-              <div className="flex items-center space-x-1">
-                <span className="text-[10px] uppercase font-bold text-slate-400">User:</span>
-                <span className="text-xs font-black text-slate-900 group-hover:text-rose-600 truncate max-w-[90px] sm:max-w-[140px]">
-                  {currentUser?.badge || currentUser?.username || 'OPERATOR'}
-                </span>
-                <span className="text-[10px] text-slate-400">▾</span>
-              </div>
-              <div className="text-[10px] text-slate-500 font-medium truncate max-w-[120px] hidden sm:block">
-                {currentUser?.userName?.split(' (')[0] || currentUser?.name}
-              </div>
-            </div>
-          </div>
-
-          {/* Theme Toggle Button (Light ☀️ / Dark 🌙) */}
+          {/* Operator Badge */}
           <button
-            onClick={toggleTheme}
-            title={theme === 'dark' ? 'Switch to Crisp Light Mode' : 'Switch to Tactical Dark Mode'}
-            className="flex items-center space-x-1 px-2 sm:px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 text-xs font-bold transition-all shadow-xs cursor-pointer"
+            onClick={onOpenRoleModal}
+            className="flex items-center space-x-2 px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors text-left"
+            title="Switch operator role"
           >
-            {theme === 'dark' ? (
-              <>
-                <Sun className="w-3.5 h-3.5 text-amber-500" />
-                <span className="hidden md:inline text-slate-800">Light</span>
-              </>
-            ) : (
-              <>
-                <Moon className="w-3.5 h-3.5 text-slate-700" />
-                <span className="hidden md:inline text-slate-700">Dark</span>
-              </>
-            )}
+            <div className="p-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200">
+              <User className="w-3.5 h-3.5" />
+            </div>
+            <div className="leading-tight hidden xs:block">
+              <div className="text-[11px] font-semibold text-slate-900 dark:text-white truncate max-w-[130px]">
+                {currentUser?.badge || currentUser?.username || 'Operator'}
+              </div>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
+                {currentUser?.role ? currentUser.role.toUpperCase() : 'DRIVER'}
+              </div>
+            </div>
           </button>
 
-          {/* Logout / Switch Role Button */}
+          {/* Theme Toggle */}
           <button
-            onClick={() => {
-              soundFx.playClick();
-              onLogout();
-            }}
-            className="flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200 border border-slate-200 text-slate-700 text-xs font-bold transition-all shadow-xs cursor-pointer"
-            title="Log out and return to the Login Page"
+            onClick={toggleTheme}
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            className="p-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors"
+          >
+            {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
+          </button>
+
+          {/* Audio Alert Toggle */}
+          <button
+            onClick={handleToggleMute}
+            title={isMuted ? 'Unmute alerts' : 'Mute alerts'}
+            className="p-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors"
+          >
+            {isMuted ? <VolumeX className="w-4 h-4 text-slate-400" /> : <Volume2 className="w-4 h-4 text-slate-700 dark:text-slate-300" />}
+          </button>
+
+          {/* Architecture / Specs */}
+          <button
+            onClick={onOpenPitch}
+            className="flex items-center space-x-1 px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium transition-colors"
+            title="System specifications and architecture"
+          >
+            <Info className="w-3.5 h-3.5 text-slate-500" />
+            <span className="hidden md:inline">Architecture</span>
+          </button>
+
+          {/* Logout */}
+          <button
+            onClick={onLogout}
+            className="flex items-center space-x-1 px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700 hover:border-red-200 dark:hover:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-700 dark:hover:text-red-400 text-slate-600 dark:text-slate-300 text-xs font-medium transition-colors"
+            title="Log out session"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Logout</span>
-          </button>
-
-          {/* Project Pitch / Presentation */}
-          <button
-            onClick={onOpenPitch}
-            className="flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-bold transition-all shadow-xs cursor-pointer"
-          >
-            <Presentation className="w-3.5 h-3.5 text-rose-600" />
-            <span className="hidden md:inline">Mission Tech</span>
-          </button>
-
-          {/* Siren Audio Mute */}
-          <button
-            onClick={handleToggleMute}
-            title={isMuted ? 'Unmute Audio Sirens' : 'Mute Audio Sirens'}
-            className="p-1.5 sm:p-2 rounded-xl bg-slate-100 hover:bg-slate-200 border border-slate-200 text-slate-700 transition-colors cursor-pointer"
-          >
-            {isMuted ? <VolumeX className="w-4 h-4 text-slate-400" /> : <Volume2 className="w-4 h-4 text-rose-600" />}
           </button>
         </div>
       </div>
 
       {/* Navigation Sub-bar */}
-      <div className="max-w-[1780px] mx-auto px-4 sm:px-6 flex items-center space-x-2 overflow-x-auto py-1.5 border-t border-slate-100 scrollbar-none">
+      <div className="max-w-[1780px] mx-auto px-4 sm:px-6 flex items-center space-x-1 overflow-x-auto py-1 border-t border-slate-100 dark:border-slate-800 scrollbar-none">
         {navItems.map((item) => {
           const isActive = activeTab === item.id;
           const Icon = item.icon;
-          const isAdminTab = item.id === 'admin_panel';
 
           return (
             <button
               key={item.id}
-              onClick={() => {
-                soundFx.playClick();
-                setActiveTab(item.id);
-              }}
-              className={`flex items-center space-x-2.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+              onClick={() => setActiveTab(item.id)}
+              className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
                 isActive
-                  ? isAdminTab 
-                    ? 'bg-amber-600 text-white shadow-md shadow-amber-600/25 border border-amber-600'
-                    : 'bg-rose-600 text-white shadow-md shadow-rose-600/25 border border-rose-600'
-                  : isAdminTab
-                    ? 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200'
-                    : 'bg-slate-50 text-slate-700 hover:text-slate-900 hover:bg-slate-100 border border-slate-200'
+                  ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
+                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
               }`}
             >
-              <Icon className={`w-4 h-4 ${isActive ? 'text-white' : isAdminTab ? 'text-amber-600' : 'text-slate-500'}`} />
-              <div className="text-left leading-tight">
-                <div className={isActive ? 'text-white font-black' : isAdminTab ? 'text-amber-900 font-black' : 'text-slate-800'}>
-                  {item.label}
-                </div>
-                <div className={`text-[10px] font-normal font-mono ${isActive ? 'text-rose-100' : isAdminTab ? 'text-amber-600' : 'text-slate-400'}`}>
-                  {item.sub}
-                </div>
-              </div>
+              <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white dark:text-slate-900' : 'text-slate-500'}`} />
+              <span>{item.label}</span>
+              <span className={`text-[10px] font-mono ml-1 ${isActive ? 'text-slate-300 dark:text-slate-600' : 'text-slate-400'}`}>
+                {item.sub}
+              </span>
             </button>
           );
         })}
