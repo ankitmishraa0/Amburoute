@@ -32,8 +32,8 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
   const [selectedRoleKey, setSelectedRoleKey] = useState('driver');
 
   // Login Form State
-  const [username, setUsername] = useState('driver108');
-  const [password, setPassword] = useState('1080');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
   const [successBanner, setSuccessBanner] = useState(null);
@@ -126,11 +126,6 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
   // Select department role preset
   const handleRoleSelect = (key) => {
     setSelectedRoleKey(key);
-    const roleMeta = ROLE_MAP[key];
-    if (roleMeta) {
-      setUsername(roleMeta.demoUsername || '');
-      setPassword(roleMeta.demoPassword || '');
-    }
     setErrorMessage(null);
   };
 
@@ -144,8 +139,6 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
     const p = roleMeta.demoPassword || '1080';
 
     setSelectedRoleKey(roleKey);
-    setUsername(u);
-    setPassword(p);
     setErrorMessage(null);
     setIsVerifying(true);
 
@@ -343,7 +336,7 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
 
       setSelectedRoleKey(newUser.role);
       setUsername(newUser.username);
-      setPassword(regForm.password);
+      setPassword('');
       setSuccessBanner(`Operator account registered for ${newUser.name}. Authenticate to access CAD telemetry.`);
     } catch (err) {
       setIsRegistering(false);
@@ -536,12 +529,6 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
               </>
             )}
           </button>
-
-          {/* Pre-filled Credential Hint */}
-          <div className="px-3 py-1.5 bg-[var(--bg-surface-elevated)] rounded border border-[var(--border-subtle)] flex items-center justify-between text-[11px] text-[var(--text-muted)] font-mono">
-            <span>Pre-filled Credentials:</span>
-            <span className="font-semibold text-[var(--text-primary)]">{selectedRole.credentialsHint}</span>
-          </div>
 
           {/* Success Banner */}
           {successBanner && (

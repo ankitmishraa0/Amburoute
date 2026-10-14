@@ -10,7 +10,6 @@ export const OPERATOR_ROLES = [
     assignedTab: 'command_map',
     department: 'Emergency Medical Services (EMS)',
     description: 'Turn-by-turn route telemetry, patient vitals transmission, and hospital destination routing.',
-    credentialsHint: 'driver108 / 1080',
     demoUsername: 'driver108',
     demoPassword: '1080'
   },
@@ -23,7 +22,6 @@ export const OPERATOR_ROLES = [
     assignedTab: 'handoff',
     department: 'Hospital Emergency Medicine',
     description: 'Pre-arrival patient vitals telemetry, ECG stream monitoring, and trauma bed reservation.',
-    credentialsHint: 'doctor_aiims / aiims123',
     demoUsername: 'doctor_aiims',
     demoPassword: 'aiims123'
   },
@@ -36,7 +34,6 @@ export const OPERATOR_ROLES = [
     assignedTab: 'signals',
     department: 'Intelligent Traffic Management',
     description: 'Corridor signal preemption, intersection clearance monitoring, and manual cycle overrides.',
-    credentialsHint: 'traffic_gkp / traffic123',
     demoUsername: 'traffic_gkp',
     demoPassword: 'traffic123'
   },
@@ -49,7 +46,6 @@ export const OPERATOR_ROLES = [
     assignedTab: 'admin_panel',
     department: 'System Operations & CAD Management',
     description: 'Operator account provisioning, corridor telemetry configuration, and global overrides.',
-    credentialsHint: 'admin / admin123',
     demoUsername: 'admin',
     demoPassword: 'admin123'
   }
