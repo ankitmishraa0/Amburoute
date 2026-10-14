@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from typing import List, Optional
 import json
 import os
+from app.services import auth_service
 
 router = APIRouter(prefix="/api/users", tags=["Users"])
 
@@ -149,18 +150,20 @@ def create_user(req: UserCreateRequest):
         "admin": "Master Administration"
     }
 
+    hashed_password = auth_service.hash_password(req.password.strip())
+
     new_user = {
         "id": clean_username,
         "username": clean_username,
-        "name": req.name.strip(),
+        "name": auth_service.sanitize_input(req.name),
         "role": req.role,
-        "department": req.department or dept_map.get(req.role, "Operations"),
-        "badge": req.badge.strip().upper() if req.badge else f"UNIT-{clean_username.upper()}",
-        "password": req.password.strip(),
+        "department": auth_service.sanitize_input(req.department) if req.department else dept_map.get(req.role, "Operations"),
+        "badge": auth_service.sanitize_input(req.badge).upper() if req.badge else f"UNIT-{clean_username.upper()}",
+        "password": hashed_password,
         "status": req.status or "active",
         "assignedTab": tab_map.get(req.role, "command_map"),
         "createdAt": "2026-09-20",
-        "description": req.description or f"Registered operator {req.name.strip()}."
+        "description": auth_service.sanitize_input(req.description) if req.description else f"Registered operator {req.name.strip()}."
     }
 
     users.append(new_user)
@@ -183,7 +186,12 @@ def update_user(username: str, req: UserUpdateRequest):
     update_dict = req.model_dump(exclude_unset=True)
     for k, v in update_dict.items():
         if v is not None:
-            users[index][k] = v
+            if k == "password":
+                users[index][k] = auth_service.hash_password(v.strip())
+            elif isinstance(v, str):
+                users[index][k] = auth_service.sanitize_input(v)
+            else:
+                users[index][k] = v
 
     save_users(users)
     return {"message": "User updated successfully"}

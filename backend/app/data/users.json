@@ -19,7 +19,7 @@
     "role": "driver",
     "department": "Ambulance Crew (ALS)",
     "badge": "UNIT MEDIC-12 (ALS)",
-    "password": "1080",
+    "password": "$2b$12$38yVWTKaKWcD4ie5Tsgm.uJpDFUxOCKWiY5Ov611XGGiQJH5HOKfu",
     "status": "active",
     "assignedTab": "command_map",
     "createdAt": "2026-01-01",

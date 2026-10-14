@@ -110,7 +110,12 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null); // When null, displays dedicated LoginPage!
   const [currentRole, setCurrentRole] = useState(PORTAL_ROLES[0]); // Default to Ambulance Paramedic
   const [theme, setTheme] = useState(() => {
-    return localStorage.getItem('amburoute_theme') || 'light';
+    const saved = localStorage.getItem('amburoute_theme');
+    if (saved) return saved;
+    if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return 'dark';
+    }
+    return 'light';
   });
   const hasUserRelocatedRef = useRef(true); // Default to Gorakhpur preset
 
@@ -126,8 +131,26 @@ export default function App() {
     localStorage.setItem('amburoute_theme', theme);
   }, [theme]);
 
+  // Listen to OS system color scheme preference changes if user hasn't explicitly set a custom theme
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSystemThemeChange = (e) => {
+      const saved = localStorage.getItem('amburoute_theme');
+      if (!saved) {
+        setTheme(e.matches ? 'dark' : 'light');
+      }
+    };
+    mediaQuery.addEventListener('change', handleSystemThemeChange);
+    return () => mediaQuery.removeEventListener('change', handleSystemThemeChange);
+  }, []);
+
   const toggleTheme = () => {
-    setTheme(prev => (prev === 'light' ? 'dark' : 'light'));
+    setTheme(prev => {
+      const nextTheme = prev === 'light' ? 'dark' : 'light';
+      localStorage.setItem('amburoute_theme', nextTheme);
+      return nextTheme;
+    });
     try { soundFx?.playClick?.(); } catch (e) {}
   };
 
