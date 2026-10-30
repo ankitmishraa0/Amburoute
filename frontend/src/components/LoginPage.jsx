@@ -129,50 +129,6 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
     setErrorMessage(null);
   };
 
-  // 1-Click Fast Dispatch CAD Demo Login
-  const handleQuickDemoLogin = async (keyToUse) => {
-    if (lockoutTime > 0) return;
-
-    const roleKey = keyToUse || selectedRoleKey;
-    const roleMeta = ROLE_MAP[roleKey] || ROLE_MAP['driver'];
-    const u = roleMeta.demoUsername || 'driver108';
-    const p = roleMeta.demoPassword || '1080';
-
-    setSelectedRoleKey(roleKey);
-    setErrorMessage(null);
-    setIsVerifying(true);
-
-    try {
-      const result = await userService.loginWithCredentials({
-        username: u,
-        password: p,
-        role: roleKey
-      });
-
-      setIsVerifying(false);
-
-      if (result.success) {
-        const authenticatedUser = {
-          ...roleMeta,
-          ...result.user,
-          name: result.user.name || roleMeta.label,
-          badge: result.user.badge || roleMeta.badge,
-          defaultTab: result.user.assignedTab || roleMeta.assignedTab
-        };
-        onLogin(authenticatedUser);
-      } else if (result.requires2FA) {
-        setRequires2FA(true);
-        setTwoFactorToken(result.tempToken);
-        setTwoFactorOtpHint(result.demoOtpHint);
-      } else {
-        setErrorMessage(result.message || 'Invalid email or password');
-      }
-    } catch (e) {
-      setIsVerifying(false);
-      setErrorMessage('Invalid email or password');
-    }
-  };
-
   // Secure Form Login Handler
   const handleSecureLogin = async (e) => {
     e.preventDefault();
@@ -455,30 +411,35 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
 
       {/* Main Login Card Container */}
       <main className="max-w-md w-full mx-auto my-auto py-6">
-        <div className="cad-panel bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-lg p-6 sm:p-7 shadow-sm space-y-5">
+        <div className="cad-panel bg-[var(--bg-surface)] dark:bg-[#0c1322] border border-[var(--border-subtle)] dark:border-slate-800 rounded-xl p-6 sm:p-7 shadow-xl space-y-5">
           
           {/* Card Title & Description */}
           <div className="space-y-1">
-            <h1 className="text-lg font-bold text-[var(--text-primary)] tracking-tight">
-              Operator Sign-In
-            </h1>
+            <div className="flex items-center justify-between">
+              <h1 className="text-lg font-bold text-[var(--text-primary)] tracking-tight flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-red-600 dark:text-red-500" />
+                Operator Sign-In
+              </h1>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/80 text-[var(--text-muted)]">
+                CAD v2.4
+              </span>
+            </div>
             <p className="text-xs text-[var(--text-muted)]">
-              Select department station and enter credentials to access live CAD telemetry.
+              Select department station and authenticate to access live CAD telemetry.
             </p>
           </div>
 
-          {/* Department Console Selector */}
+          {/* Department / Station Segmented Control */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="block text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
-                Select Console Department
-              </span>
-              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono font-medium">
-                1-Click Ready
-              </span>
-            </div>
+            <label className="block text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
+              Department / Station
+            </label>
 
-            <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="Console Department">
+            <div 
+              className="grid grid-cols-2 sm:grid-cols-4 gap-1 p-1 bg-slate-100 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-lg" 
+              role="tablist" 
+              aria-label="Department Station"
+            >
               {OPERATOR_ROLES.map((role) => {
                 const isSelected = selectedRoleKey === role.id;
                 const Icon = role.icon;
@@ -487,48 +448,35 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
                   <button
                     key={role.id}
                     type="button"
-                    role="radio"
-                    aria-checked={isSelected}
+                    role="tab"
+                    aria-selected={isSelected}
                     onClick={() => handleRoleSelect(role.id)}
-                    className={`p-2.5 rounded-md border text-left transition-all flex items-center space-x-2.5 min-h-[44px] cursor-pointer ${
+                    className={`flex items-center justify-center gap-1.5 py-2 px-2 rounded-md text-xs font-medium transition-all cursor-pointer ${
                       isSelected
-                        ? 'border-slate-900 dark:border-white bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
-                        : 'border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] hover:bg-slate-200/50 dark:hover:bg-slate-800'
+                        ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border border-slate-200 dark:border-slate-700 font-semibold'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-800/40'
                     }`}
+                    title={`${role.label} (${role.badge})`}
                   >
-                    <Icon className={`w-4 h-4 shrink-0 ${isSelected ? 'text-white dark:text-slate-900' : 'text-slate-500'}`} />
-                    <div className="min-w-0 flex-1">
-                      <div className="text-xs font-semibold truncate leading-tight">{role.shortLabel}</div>
-                      <div className={`text-[10px] font-mono ${isSelected ? 'text-slate-300 dark:text-slate-600' : 'text-[var(--text-muted)]'}`}>
-                        {role.badge}
-                      </div>
-                    </div>
+                    <Icon className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-red-600 dark:text-red-400' : 'text-slate-400'}`} />
+                    <span className="truncate text-xs">{role.shortLabel}</span>
                   </button>
                 );
               })}
             </div>
-          </div>
 
-          {/* 1-Click Fast CAD Access Button */}
-          <button
-            type="button"
-            onClick={() => handleQuickDemoLogin(selectedRoleKey)}
-            disabled={isVerifying || lockoutTime > 0}
-            className="w-full min-h-[44px] py-2.5 px-4 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-semibold text-xs rounded-md shadow-sm transition-colors flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-          >
-            {isVerifying ? (
-              <span className="flex items-center gap-2">
-                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                Connecting to Dispatch CAD...
+            {/* Active Station Callsign Info */}
+            <div className="flex items-center justify-between text-[11px] font-mono text-[var(--text-muted)] px-1 pt-0.5">
+              <span className="flex items-center gap-1.5 truncate">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0 animate-pulse"></span>
+                <span>Station:</span>
+                <span className="font-semibold text-[var(--text-primary)] truncate">{selectedRole.badge}</span>
               </span>
-            ) : (
-              <>
-                <Activity className="w-4 h-4" />
-                <span>Launch {selectedRole.label} Console (1-Click)</span>
-                <ArrowRight className="w-3.5 h-3.5 ml-1" />
-              </>
-            )}
-          </button>
+              <span className="text-[10px] text-[var(--text-muted)] uppercase shrink-0 font-medium">
+                {selectedRole.id === 'driver' ? 'EMS' : selectedRole.id === 'hospital' ? 'Trauma ER' : selectedRole.id === 'traffic' ? 'ITMS' : 'Admin'}
+              </span>
+            </div>
+          </div>
 
           {/* Success Banner */}
           {successBanner && (
@@ -567,49 +515,29 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
             </div>
           )}
 
-          {/* Passkey (WebAuthn) Optional Sign-In Button */}
-          <button
-            type="button"
-            onClick={handlePasskeyLogin}
-            disabled={isPasskeyLoading || isVerifying || lockoutTime > 0}
-            className="w-full min-h-[44px] py-2 px-3 border border-[var(--border-subtle)] bg-[var(--bg-surface)] hover:bg-[var(--bg-surface-elevated)] text-[var(--text-primary)] rounded-md font-medium text-xs transition-colors flex items-center justify-center space-x-2 cursor-pointer disabled:opacity-50"
-          >
-            <Fingerprint className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-            <span>Sign in with Passkey (Touch ID / Face ID / Security Key)</span>
-          </button>
-
-          {/* Divider */}
-          <div className="relative flex items-center justify-center my-1">
-            <div className="border-t border-[var(--border-subtle)] w-full"></div>
-            <span className="bg-[var(--bg-surface)] px-2 text-[10px] uppercase font-mono text-[var(--text-muted)] shrink-0">
-              or sign in with credentials
-            </span>
-            <div className="border-t border-[var(--border-subtle)] w-full"></div>
-          </div>
-
           {/* Standards-Compliant Autofill Form */}
           <form
             method="post"
             onSubmit={handleSecureLogin}
-            className="space-y-3.5"
+            className="space-y-4"
           >
-            {/* Username / Badge ID with autocomplete="username" */}
+            {/* Username / Badge ID with inline Passkey (WebAuthn) trigger */}
             <div>
               <label 
                 htmlFor="login-username" 
-                className="block text-xs font-medium text-[var(--text-primary)] mb-1"
+                className="block text-xs font-medium text-[var(--text-primary)] mb-1.5"
               >
-                Badge ID / Username
+                Badge ID / Employee Username
               </label>
-              <div className="relative">
-                <User className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+              <div className="relative flex items-center">
+                <User className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
                 <input
                   id="login-username"
                   name="username"
                   type="text"
                   required
                   autoComplete="username"
-                  placeholder="e.g. driver108"
+                  placeholder={selectedRole.demoUsername ? `e.g. ${selectedRole.demoUsername}` : 'Enter badge ID or username'}
                   value={username}
                   onChange={(e) => {
                     const val = e.target.value;
@@ -619,19 +547,31 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
                     }
                   }}
                   disabled={lockoutTime > 0}
-                  className="w-full min-h-[44px] pl-9 pr-3 py-2 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-md text-xs font-mono text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-white transition-colors"
+                  className="w-full min-h-[44px] pl-9 pr-10 py-2 bg-[var(--bg-surface)] dark:bg-slate-950/70 border border-[var(--border-subtle)] dark:border-slate-800 rounded-lg text-xs font-mono text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-white transition-colors"
                 />
+                
+                {/* Native Inline Biometric / Passkey WebAuthn Trigger */}
+                <button
+                  type="button"
+                  onClick={handlePasskeyLogin}
+                  disabled={isPasskeyLoading || isVerifying || lockoutTime > 0}
+                  title="Sign in with Passkey / Biometrics (Touch ID / Face ID / Security Key)"
+                  aria-label="Sign in with Passkey or Biometrics"
+                  className="absolute right-2.5 p-1.5 rounded-md text-slate-400 hover:text-blue-500 dark:hover:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800/80 transition-colors cursor-pointer disabled:opacity-40"
+                >
+                  <Fingerprint className={`w-4 h-4 ${isPasskeyLoading ? 'animate-pulse text-blue-500' : ''}`} />
+                </button>
               </div>
             </div>
 
-            {/* Password with autocomplete="current-password" & Show/Hide Toggle */}
+            {/* Password with autocomplete="current-password", Show/Hide Toggle & Aligned Forgot PIN */}
             <div>
-              <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center justify-between mb-1.5">
                 <label 
                   htmlFor="login-password" 
                   className="block text-xs font-medium text-[var(--text-primary)]"
                 >
-                  Security Password / PIN
+                  Security PIN / Password
                 </label>
                 <button
                   type="button"
@@ -642,30 +582,30 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
                   }}
                   className="text-[11px] text-slate-500 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
                 >
-                  Forgot password?
+                  Forgot PIN?
                 </button>
               </div>
 
-              <div className="relative">
-                <Lock className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3 pointer-events-none" />
+              <div className="relative flex items-center">
+                <Lock className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
                 <input
                   id="login-password"
                   name="password"
                   type={showPassword ? 'text' : 'password'}
                   required
                   autoComplete="current-password"
-                  placeholder="Enter security password"
+                  placeholder="Enter security password or PIN"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={lockoutTime > 0}
-                  className="w-full min-h-[44px] pl-9 pr-10 py-2 bg-[var(--bg-surface)] border border-[var(--border-subtle)] rounded-md text-xs font-mono text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-white transition-colors"
+                  className="w-full min-h-[44px] pl-9 pr-10 py-2 bg-[var(--bg-surface)] dark:bg-slate-950/70 border border-[var(--border-subtle)] dark:border-slate-800 rounded-lg text-xs font-mono text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-slate-900 dark:focus:ring-white transition-colors"
                 />
                 <button
                   type="button"
                   aria-label={showPassword ? 'Hide password' : 'Show password'}
                   aria-pressed={showPassword}
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-2.5 top-2.5 p-1 min-w-[32px] min-h-[32px] flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                  className="absolute right-2.5 p-1.5 rounded-md text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors cursor-pointer"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -708,11 +648,11 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
               </div>
             )}
 
-            {/* Form Submit Button */}
+            {/* Primary Action Button */}
             <button
               type="submit"
               disabled={isVerifying || lockoutTime > 0}
-              className="w-full min-h-[44px] py-2.5 px-3 bg-slate-900 hover:bg-slate-800 active:bg-black dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100 text-white rounded-md font-medium text-xs transition-colors flex items-center justify-center space-x-1.5 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-xs"
+              className="w-full min-h-[44px] py-2.5 px-4 bg-red-600 hover:bg-red-700 active:bg-red-800 dark:bg-red-600 dark:hover:bg-red-500 text-white font-semibold text-xs rounded-lg shadow-sm transition-all flex items-center justify-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               {isVerifying ? (
                 <span className="flex items-center gap-2">
@@ -721,15 +661,16 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
                 </span>
               ) : (
                 <>
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>Authenticate Credentials</span>
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Sign In to Console</span>
+                  <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
                 </>
               )}
             </button>
           </form>
 
           {/* Form Footer Links */}
-          <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between text-xs">
+          <div className="pt-2 border-t border-[var(--border-subtle)] dark:border-slate-800 flex items-center justify-between text-xs">
             <button
               type="button"
               onClick={() => {
