@@ -106,9 +106,7 @@ export default function App() {
   const [hospitals, setHospitals] = useState(GORAKHPUR_HOSPITALS);
   const [wsStatus, setWsStatus] = useState('connecting');
   const [isPitchOpen, setIsPitchOpen] = useState(false);
-  const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null); // When null, displays dedicated LoginPage!
-  const [currentRole, setCurrentRole] = useState(PORTAL_ROLES[0]); // Default to Ambulance Paramedic
+  const [currentUser, setCurrentUser] = useState(PORTAL_ROLES[0]); // Default to Ambulance Paramedic directly
   const [theme, setTheme] = useState(() => {
     const saved = localStorage.getItem('amburoute_theme');
     if (saved) return saved;
