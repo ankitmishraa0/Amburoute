@@ -29,10 +29,12 @@ import {
 import { soundFx } from './services/sound';
 import { GORAKHPUR_HOSPITALS, generateRouteAndSignals, SCENARIOS_DATA } from './services/locationHospitals';
 import { callService } from './services/callService';
+import { rideService } from './services/rideService';
 
-// Real-Time Cross-Device Calling UI
+// Real-Time Cross-Device Calling & Ride Dispatch UI
 import IncomingCallNotification from './components/common/IncomingCallNotification';
 import EmergencyCallModal from './components/common/EmergencyCallModal';
+import IncomingRideRequestModal from './components/common/IncomingRideRequestModal';
 
 // Initial Gorakhpur Route & Telemetry Preset
 const { waypoints: GKP_WAYPOINTS, signals: GKP_SIGNALS } = generateRouteAndSignals(
@@ -194,6 +196,42 @@ export default function App() {
       callService.init(roleKey);
     }
   }, [currentUser]);
+
+  // Manage Driver Online Presence for Real-Time Fleet Visibility
+  useEffect(() => {
+    if (currentUser?.role === 'driver') {
+      rideService.startDriverPresence(currentUser);
+    } else {
+      rideService.stopDriverPresence();
+    }
+
+    return () => {
+      rideService.stopDriverPresence();
+    };
+  }, [currentUser]);
+
+  // When driver accepts an incoming patient ride request
+  const handleRideAcceptedByDriver = (acceptedRide) => {
+    if (!acceptedRide) return;
+    try { soundFx?.playSuccess?.(); } catch (e) {}
+
+    const pickupCoords = acceptedRide.pickupCoords || { lat: 26.7606, lng: 83.3732 };
+
+    setTelemetry(prev => ({
+      ...prev,
+      incident: {
+        ...prev.incident,
+        title: `Patient Emergency: ${acceptedRide.emergencyType || 'Medical Emergency'}`,
+        address: acceptedRide.pickupAddress,
+        coordinates: pickupCoords
+      },
+      ambulance: {
+        ...prev.ambulance,
+        status: 'en_route_to_patient',
+        active_patient_ride: acceptedRide
+      }
+    }));
+  };
 
   const handleSelectRole = (role) => {
     setCurrentRole(role);
@@ -558,6 +596,9 @@ export default function App() {
       {/* Real-Time Telemedicine Video & Voice Calling across devices */}
       <IncomingCallNotification />
       <EmergencyCallModal telemetry={telemetry} />
+
+      {/* Real-Time Incoming Patient Ride Request Modal (for Driver) */}
+      <IncomingRideRequestModal onRideAccepted={handleRideAcceptedByDriver} />
 
     </div>
   );

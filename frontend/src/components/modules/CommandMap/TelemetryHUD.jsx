@@ -83,6 +83,48 @@ export default function TelemetryHUD({
   return (
     <div className="space-y-3">
       
+      {/* Active Patient Pickup Dispatch Banner (Rapido Style) */}
+      {ambulance?.active_patient_ride && (
+        <div className="p-3.5 bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white rounded-2xl shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in border-2 border-red-400/50">
+          <div className="flex items-center space-x-3">
+            <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center text-lg shrink-0 animate-bounce">
+              📍
+            </div>
+            <div>
+              <div className="text-[10px] uppercase font-bold text-red-200 tracking-wider">
+                🚨 Active Patient Pickup Assigned (Rapido Ride)
+              </div>
+              <div className="text-sm font-black text-white">
+                {ambulance.active_patient_ride.pickupAddress}
+              </div>
+              <div className="text-xs text-red-100">
+                Patient: <strong>{ambulance.active_patient_ride.patientName}</strong> • Emergency: <strong>{ambulance.active_patient_ride.emergencyType}</strong>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                try { soundFx?.playClick?.(); } catch (e) {}
+                callService.makeCall({
+                  targetRole: 'patient',
+                  callType: 'voice',
+                  callerName: 'Ambulance MEDIC-12 (Driver Rajesh)',
+                  targetName: 'Citizen Patient',
+                  department: 'Emergency Pickup Line'
+                });
+              }}
+              className="px-4 py-2 bg-white text-red-600 hover:bg-red-50 text-xs font-black rounded-xl shadow-md transition-all flex items-center space-x-1.5 cursor-pointer ring-2 ring-white/40"
+            >
+              <PhoneCall className="w-3.5 h-3.5 fill-current" />
+              <span>Call Patient (Voice)</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Green Wave Celebration Banner */}
       {greenWaveSuccess && (
         <div className="p-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl shadow-lg flex items-center justify-between animate-bounce">
