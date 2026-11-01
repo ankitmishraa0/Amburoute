@@ -1,10 +1,10 @@
 /**
  * Real-Time Cross-Device Emergency Ride Dispatch & Presence Service (Rapido / Uber Style)
- * Uses high-speed public cloud SSE relay (ntfy.sh) + Dual-Channel Polling Fallback + BroadcastChannel
- * to guarantee 100% reliable cross-device communication between Patient Phone & Driver Laptop.
+ * Uses high-speed cloud relay (ntfy.sh) + Active Sub-Second Polling + BroadcastChannel
+ * Guaranteed 100% reliable cross-device communication between Patient Phone & Driver Laptop.
  */
 
-const SSE_URL = 'https://ntfy.sh/amburoute_ride_dispatch_gkp_v2';
+const SSE_URL = 'https://ntfy.sh/amburoute_dispatch_gkp_v3';
 const CHANNEL_NAME = 'amburoute_ride_dispatch';
 const STORAGE_DRIVERS_KEY = 'amburoute_online_drivers_v1';
 const STORAGE_ACTIVE_RIDE_KEY = 'amburoute_active_ride_v1';
@@ -57,7 +57,7 @@ class EmergencyRideService {
     if (typeof window !== 'undefined') {
       setInterval(() => {
         this._pruneStaleDrivers();
-      }, 3000);
+      }, 4000);
     }
   }
 
@@ -89,25 +89,31 @@ class EmergencyRideService {
     }
   }
 
-  // Secondary backup poll every 2.5 seconds to guarantee mobile phones never miss requests
+  // Active fast polling every 1.5 seconds to guarantee devices never miss any request
   _startCloudPolling() {
     if (this.pollTimer) clearInterval(this.pollTimer);
-    this.pollTimer = setInterval(async () => {
-      try {
-        const res = await fetch(`${SSE_URL}/json?poll=1&since=20s`, { cache: 'no-store' });
-        if (!res.ok) return;
-        const text = await res.text();
-        if (!text) return;
-        const lines = text.trim().split('\n');
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          try {
-            const raw = JSON.parse(line.trim());
-            this._processIncomingRelay(raw);
-          } catch (e) {}
-        }
-      } catch (e) {}
-    }, 2500);
+    // Poll immediately
+    this._pollNow();
+    this.pollTimer = setInterval(() => {
+      this._pollNow();
+    }, 1500);
+  }
+
+  async _pollNow() {
+    try {
+      const res = await fetch(`${SSE_URL}/json?poll=1`, { cache: 'no-store' });
+      if (!res.ok) return;
+      const text = await res.text();
+      if (!text) return;
+      const lines = text.trim().split('\n');
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        try {
+          const raw = JSON.parse(line.trim());
+          this._processIncomingRelay(raw);
+        } catch (e) {}
+      }
+    } catch (e) {}
   }
 
   _processIncomingRelay(raw) {
@@ -139,11 +145,12 @@ class EmergencyRideService {
     }
 
     // Limit set size to prevent memory leaks
-    if (this.seenRelayIds.size > 200) {
+    if (this.seenRelayIds.size > 300) {
       const arr = Array.from(this.seenRelayIds);
-      this.seenRelayIds = new Set(arr.slice(-100));
+      this.seenRelayIds = new Set(arr.slice(-150));
     }
 
+    console.log('[AmbuRoute Dispatch] 📲 Incoming Event:', payload.type, payload);
     this._handleMessage(payload);
   }
 
@@ -208,9 +215,10 @@ class EmergencyRideService {
     // Send immediately
     postToCloud();
 
-    // For critical dispatch events, send an automatic backup after 250ms
+    // Redundant backup transmission after 200ms to guarantee zero packet loss
     if (fullMsg.type === 'RIDE_REQUEST' || fullMsg.type === 'RIDE_ACCEPTED') {
-      setTimeout(postToCloud, 250);
+      setTimeout(postToCloud, 200);
+      setTimeout(postToCloud, 600);
     }
   }
 
@@ -227,10 +235,12 @@ class EmergencyRideService {
         break;
 
       case 'RIDE_REQUEST':
+        console.log('🚨 DRIVER DISPATCH RECEIVED RIDE_REQUEST:', msg.ride);
         this._notify('rideRequest', msg.ride);
         break;
 
       case 'RIDE_ACCEPTED':
+        console.log('✅ PATIENT RECEIVED RIDE_ACCEPTED:', msg.ride);
         this.activeRide = msg.ride;
         this._notify('rideAccepted', msg.ride);
         break;
@@ -272,7 +282,7 @@ class EmergencyRideService {
 
     this._recordDriverHeartbeat(this.currentDriver);
 
-    // Broadcast immediately across internet (burst to register rapidly)
+    // Broadcast immediately across internet
     this._broadcast({
       type: 'DRIVER_HEARTBEAT',
       driver: this.currentDriver
@@ -281,9 +291,9 @@ class EmergencyRideService {
       if (this.currentDriver) {
         this._broadcast({ type: 'DRIVER_HEARTBEAT', driver: this.currentDriver });
       }
-    }, 600);
+    }, 400);
 
-    // Send heartbeat every 3 seconds
+    // Send heartbeat every 4 seconds
     if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
     this.heartbeatTimer = setInterval(() => {
       if (this.currentDriver) {
@@ -294,7 +304,7 @@ class EmergencyRideService {
         });
         this._recordDriverHeartbeat(this.currentDriver);
       }
-    }, 3000);
+    }, 4000);
   }
 
   stopDriverPresence() {
@@ -341,8 +351,8 @@ class EmergencyRideService {
     try {
       const now = Date.now();
       let drivers = this.getOnlineDrivers();
-      // Drop drivers who haven't pinged in 12 seconds
-      const freshDrivers = drivers.filter(d => now - d.lastSeen < 12000);
+      // Drop drivers who haven't pinged in 15 seconds
+      const freshDrivers = drivers.filter(d => now - d.lastSeen < 15000);
       if (freshDrivers.length !== drivers.length) {
         localStorage.setItem(STORAGE_DRIVERS_KEY, JSON.stringify(freshDrivers));
         this._notify('driversChanged', freshDrivers);
@@ -357,7 +367,7 @@ class EmergencyRideService {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) {
           const now = Date.now();
-          return parsed.filter(d => now - d.lastSeen < 12000);
+          return parsed.filter(d => now - d.lastSeen < 15000);
         }
       }
     } catch (e) {}

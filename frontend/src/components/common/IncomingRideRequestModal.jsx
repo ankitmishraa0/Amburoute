@@ -86,7 +86,7 @@ export default function IncomingRideRequestModal({ onRideAccepted }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/80 backdrop-blur-md animate-fade-in">
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-3 sm:p-5 bg-slate-950/85 backdrop-blur-md animate-fade-in pointer-events-auto">
       <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 border-2 border-red-500 rounded-3xl p-6 shadow-2xl space-y-5 ring-4 ring-red-500/30 text-slate-900 dark:text-white">
         
         {/* Pulsing Emergency Header */}

@@ -22,12 +22,30 @@ import CallSelectorModal from '@/components/common/CallSelectorModal';
 
 export default function DriverStandbyView({ 
   currentUser, 
-  onSimulateIncomingRequest 
+  onSimulateIncomingRequest,
+  onAcceptRide 
 }) {
   const [isCallModalOpen, setIsCallModalOpen] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [pulseCount, setPulseCount] = useState(0);
   const [simulatedTriggered, setSimulatedTriggered] = useState(false);
+  const [incomingRide, setIncomingRide] = useState(null);
+
+  useEffect(() => {
+    const unsub = rideService.on('rideRequest', (ride) => {
+      console.log('DriverStandbyView 🚨 received rideRequest:', ride);
+      setIncomingRide(ride);
+      try {
+        soundFx.startRinging();
+        soundFx.playAlert();
+      } catch (e) {}
+    });
+
+    return () => {
+      unsub();
+      try { soundFx.stopRinging(); } catch (e) {}
+    };
+  }, []);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -114,6 +132,60 @@ export default function DriverStandbyView({
           </div>
         </div>
       </div>
+
+      {/* High-Priority Incoming Ride Request Card directly in Standby View */}
+      {incomingRide && (
+        <div className="bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white rounded-3xl p-5 sm:p-6 shadow-2xl border-4 border-red-300 ring-8 ring-red-500/30 animate-pulse space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2.5">
+              <span className="w-4 h-4 rounded-full bg-white animate-ping" />
+              <span className="font-black text-sm uppercase tracking-wider">🚨 NEW EMERGENCY PATIENT CALL (RAPIDO STYLE)</span>
+            </div>
+            <span className="text-xs font-mono font-black bg-white/25 px-3 py-1 rounded-full">PRIORITY CODE-1</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div className="bg-black/25 p-3.5 rounded-2xl space-y-1">
+              <span className="font-bold opacity-75 block text-[10px] uppercase">Patient Complaint</span>
+              <span className="font-black text-sm text-white">{incomingRide.patientName}</span>
+              <span className="block opacity-90 text-[11px]">Type: {incomingRide.emergencyType || 'Heart Attack / STEMI'}</span>
+            </div>
+            <div className="bg-black/25 p-3.5 rounded-2xl space-y-1">
+              <span className="font-bold opacity-75 block text-[10px] uppercase">Pickup Point</span>
+              <span className="font-black text-sm text-white">📍 {incomingRide.pickupAddress}</span>
+              <span className="block opacity-90 text-[11px]">Hospital: {incomingRide.hospitalName}</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                try { soundFx.stopRinging(); soundFx.playSuccess(); } catch (e) {}
+                const accepted = rideService.acceptRide(incomingRide);
+                setIncomingRide(null);
+                if (onAcceptRide) onAcceptRide(accepted);
+              }}
+              className="flex-1 py-4 px-6 rounded-2xl bg-white hover:bg-emerald-50 text-emerald-800 font-black text-sm sm:text-base shadow-2xl flex items-center justify-center space-x-2 cursor-pointer transition-all hover:scale-[1.02]"
+            >
+              <CheckCircle2 className="w-6 h-6 text-emerald-600" />
+              <span>ACCEPT RIDE & START MISSION (GO) 🟢</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                try { soundFx.stopRinging(); } catch (e) {}
+                rideService.rejectRide(incomingRide.rideId);
+                setIncomingRide(null);
+              }}
+              className="px-6 py-4 rounded-2xl bg-black/40 hover:bg-black/60 text-white font-bold text-xs sm:text-sm cursor-pointer transition-all"
+            >
+              Decline
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Radar Scanning Console */}
       <div className="bg-slate-900/95 border border-slate-800 rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden min-h-[460px] flex flex-col items-center justify-center text-center">

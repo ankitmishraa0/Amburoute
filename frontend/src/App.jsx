@@ -494,6 +494,7 @@ export default function App() {
             <DriverStandbyView
               currentUser={currentUser}
               onSimulateIncomingRequest={() => {}}
+              onAcceptRide={handleRideAcceptedByDriver}
             />
           ) : (
             <div className="space-y-4">
