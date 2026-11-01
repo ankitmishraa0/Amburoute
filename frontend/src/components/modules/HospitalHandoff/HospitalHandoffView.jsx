@@ -6,16 +6,19 @@ import {
   CheckCircle2, 
   Heart, 
   Wind, 
-  Brain, 
+  PhoneCall, 
   CheckSquare, 
   Square, 
   Printer,
-  Radio
+  Sparkles,
+  User,
+  X
 } from 'lucide-react';
 import { fetchHandoffSummary } from '@/services/api';
+import { soundFx } from '@/services/sound';
 
-// Live simulated ECG trace on HTML5 Canvas
-function ECGMonitor({ heartRate = 120, isCritical = true }) {
+// Clean simulated ECG trace
+function ECGMonitor({ heartRate = 120 }) {
   const canvasRef = useRef(null);
 
   useEffect(() => {
@@ -28,8 +31,13 @@ function ECGMonitor({ heartRate = 120, isCritical = true }) {
     const points = [];
     const maxPoints = width;
 
-    // Background medical ECG grid
-    const drawGrid = () => {
+    let step = 0;
+    const render = () => {
+      step++;
+      ctx.fillStyle = '#0b0f17';
+      ctx.fillRect(0, 0, width, height);
+
+      // Grid
       ctx.strokeStyle = '#1e293b';
       ctx.lineWidth = 1;
       for (let i = 0; i < width; i += 20) {
@@ -44,35 +52,25 @@ function ECGMonitor({ heartRate = 120, isCritical = true }) {
         ctx.lineTo(width, j);
         ctx.stroke();
       }
-    };
 
-    let step = 0;
-    const render = () => {
-      step++;
-      ctx.fillStyle = '#0b0f17';
-      ctx.fillRect(0, 0, width, height);
-      drawGrid();
-
-      // Synthesize ECG QRS complex waveform
+      // ECG wave
       const beatInterval = Math.max(20, Math.floor(1800 / heartRate));
       const phase = step % beatInterval;
       let y = height / 2;
 
       if (phase === 4) y -= 4;
       else if (phase === 5) y -= 8;
-      else if (phase === 6) y -= 3;
       else if (phase === 8) y += 6;
       else if (phase === 10) y -= 42; // R spike
       else if (phase === 12) y += 18;
-      else if (phase === 16) y -= isCritical ? 20 : 10;
-      else if (phase === 18) y -= isCritical ? 14 : 6;
+      else if (phase === 16) y -= 16;
 
       points.push(y);
       if (points.length > maxPoints) points.shift();
 
       ctx.beginPath();
       ctx.strokeStyle = '#10b981';
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 2.5;
 
       for (let i = 0; i < points.length; i++) {
         if (i === 0) ctx.moveTo(i, points[i]);
@@ -85,17 +83,17 @@ function ECGMonitor({ heartRate = 120, isCritical = true }) {
 
     render();
     return () => cancelAnimationFrame(animationFrameId);
-  }, [heartRate, isCritical]);
+  }, [heartRate]);
 
   return (
-    <div className="relative w-full rounded-md overflow-hidden border border-slate-700 bg-slate-950">
+    <div className="relative w-full rounded-2xl overflow-hidden border border-slate-700 bg-slate-950 shadow-inner">
       <canvas ref={canvasRef} width={600} height={120} className="w-full h-[120px] block" />
-      <div className="absolute top-2 left-3 flex items-center space-x-2 text-[10px] font-mono text-emerald-400">
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-        <span>LEAD II TELEMETRY STREAM</span>
+      <div className="absolute top-2 left-3 flex items-center space-x-2 text-xs font-mono text-emerald-400 font-bold">
+        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+        <span>LIVE ECG HEART MONITOR</span>
       </div>
-      <div className="absolute top-2 right-3 text-xs font-mono font-semibold text-emerald-400 flex items-center space-x-1">
-        <Heart className="w-3.5 h-3.5 text-red-500 fill-current" />
+      <div className="absolute top-2 right-3 text-sm font-mono font-black text-emerald-400 flex items-center space-x-1.5">
+        <Heart className="w-4 h-4 text-red-500 fill-current animate-bounce" />
         <span>{heartRate} BPM</span>
       </div>
     </div>
@@ -108,46 +106,47 @@ export default function HospitalHandoffView({
   onNavigateTab 
 }) {
   const [data, setData] = useState(handoffData);
-  const [checklist, setChecklist] = useState([]);
-  const [isPrinted, setIsPrinted] = useState(false);
+  const [isBedReserved, setIsBedReserved] = useState(false);
+  const [isTeamAlerted, setIsTeamAlerted] = useState(true);
+  const [showCallModal, setShowCallModal] = useState(false);
+  const [medsList, setMedsList] = useState([
+    { id: 1, name: 'Aspirin 325mg (Chewed)', done: true },
+    { id: 2, name: 'High Flow Oxygen (15L Non-Rebreather)', done: true },
+    { id: 3, name: 'IV Line 18G Access Established', done: true },
+    { id: 4, name: 'Nitroglycerin 0.4mg Sublingual', done: false },
+    { id: 5, name: 'Cath Lab Stent Angioplasty Prep', done: false },
+  ]);
 
   useEffect(() => {
     fetchHandoffSummary()
-      .then(res => {
-        setData(res);
-        setChecklist(res.prep_checklist || []);
-      })
+      .then(res => setData(res))
       .catch(console.error);
   }, [telemetry?.scenario_key]);
 
-  const toggleChecklistItem = (id) => {
-    setChecklist(prev =>
-      prev.map(item => (item.id === id ? { ...item, done: !item.done } : item))
-    );
+  const toggleMed = (id) => {
+    try { soundFx?.playClick?.(); } catch (e) {}
+    setMedsList(prev => prev.map(m => m.id === id ? { ...m, done: !m.done } : m));
   };
 
-  const handlePrint = () => {
-    setIsPrinted(true);
-    window.print();
-    setTimeout(() => setIsPrinted(false), 3000);
+  const handleReserveBed = () => {
+    try { soundFx?.playClick?.(); } catch (e) {}
+    setIsBedReserved(!isBedReserved);
+  };
+
+  const handleAlertTeam = () => {
+    try { soundFx?.playAlert?.(); } catch (e) {}
+    setIsTeamAlerted(!isTeamAlerted);
   };
 
   const amb = telemetry?.ambulance;
   const inc = telemetry?.incident;
-  const hosp = data?.receiving_hospital;
   const vitals = inc?.patient_vitals || {
     heart_rate: 134,
     systolic_bp: 82,
     diastolic_bp: 54,
     spo2: 88,
-    respiratory_rate: 28,
-    temperature_c: 36.8,
-    gcs_score: 14,
-    age: 58,
-    symptoms: []
+    age: 58
   };
-
-  const isCritical = true;
 
   const formatSecs = (sec) => {
     if (!sec && sec !== 0) return '00:00';
@@ -159,204 +158,234 @@ export default function HospitalHandoffView({
   return (
     <div className="space-y-4">
       
-      {/* Banner */}
-      <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-lg border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
-        <div>
-          <div className="flex items-center space-x-2">
-            <Building2 className="w-4 h-4 text-slate-700 dark:text-slate-300" />
-            <h2 className="text-base font-bold text-slate-900 dark:text-white tracking-tight">
-              Hospital ER Trauma Bay Intake Terminal
-            </h2>
+      {/* Top Banner: Incoming Ambulance Countdown */}
+      <div className="bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white p-5 rounded-2xl shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center space-x-2 text-xs font-bold uppercase tracking-wider text-red-200">
+            <span className="w-2 h-2 rounded-full bg-white animate-ping"></span>
+            <span>Emergency Department • AIIMS Gorakhpur ER</span>
           </div>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Pre-arrival patient vitals and telemetry streamed from inbound ambulance to prepare resuscitation bay.
+          <h2 className="text-xl font-black tracking-tight">
+            🚑 Ambulance MEDIC-12 is Rushing to Your Trauma Bay!
+          </h2>
+          <p className="text-xs text-red-100">
+            Patient: <strong>58 Year Old Male • Severe Heart Attack (STEMI)</strong>
           </p>
         </div>
 
-        <div className="flex items-center space-x-2 shrink-0">
-          {onNavigateTab && (
-            <button
-              type="button"
-              onClick={() => onNavigateTab('command_map')}
-              className="px-3 py-1.5 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 text-xs font-medium transition-colors"
-            >
-              ← Dispatch Map
-            </button>
-          )}
-
-          <button
-            type="button"
-            onClick={handlePrint}
-            className="px-3 py-1.5 rounded-md bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 text-xs font-medium transition-colors flex items-center space-x-1.5"
-            title="Print Clinical Intake Record"
-          >
-            {isPrinted ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> : <Printer className="w-3.5 h-3.5" />}
-            <span>{isPrinted ? 'Printed' : 'Print Record'}</span>
-          </button>
-
-          <div className="px-2.5 py-1 rounded-md bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900 text-xs font-mono text-red-700 dark:text-red-300 flex items-center space-x-1.5">
-            <span className="w-2 h-2 rounded-full bg-red-600"></span>
-            <span>Trauma Team Pre-Alerted</span>
+        {/* Big Countdown Timer */}
+        <div className="bg-black/30 backdrop-blur-md px-5 py-3 rounded-2xl border border-white/20 text-center shrink-0">
+          <span className="text-[10px] uppercase font-bold text-red-200 tracking-wider block">
+            Time Until Arrival
+          </span>
+          <div className="text-3xl font-black font-mono text-white tracking-tight">
+            {formatSecs(amb?.eta_seconds || 240)}
           </div>
+          <span className="text-[11px] text-red-100 font-bold block">
+            {amb?.distance_remaining_km ?? 3.2} km away
+          </span>
         </div>
+      </div>
+
+      {/* 3 BIG 1-CLICK DOCTOR ACTIONS */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        
+        {/* 1. Reserve Bed */}
+        <button
+          type="button"
+          onClick={handleReserveBed}
+          className={`p-4 rounded-2xl font-bold transition-all shadow-md flex items-center justify-center space-x-2.5 cursor-pointer ${
+            isBedReserved
+              ? 'bg-emerald-600 text-white ring-2 ring-emerald-400'
+              : 'bg-white dark:bg-slate-800 border-2 border-emerald-500 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50'
+          }`}
+        >
+          <Building2 className="w-6 h-6" />
+          <div className="text-left leading-tight">
+            <div className="text-xs uppercase opacity-80">ER Resuscitation</div>
+            <div className="text-sm font-black">
+              {isBedReserved ? '✅ Bed #3 Reserved & Ready' : '🛏️ Reserve ER Bed #3'}
+            </div>
+          </div>
+        </button>
+
+        {/* 2. Alert Team */}
+        <button
+          type="button"
+          onClick={handleAlertTeam}
+          className={`p-4 rounded-2xl font-bold transition-all shadow-md flex items-center justify-center space-x-2.5 cursor-pointer ${
+            isTeamAlerted
+              ? 'bg-red-600 text-white ring-2 ring-red-400'
+              : 'bg-white dark:bg-slate-800 border-2 border-red-500 text-red-700 dark:text-red-400 hover:bg-red-50'
+          }`}
+        >
+          <Sparkles className="w-6 h-6 animate-pulse" />
+          <div className="text-left leading-tight">
+            <div className="text-xs uppercase opacity-80">Specialist On-Call</div>
+            <div className="text-sm font-black">
+              {isTeamAlerted ? '✅ Cardiology Team Alerted' : '🩺 Alert Cardiology Team'}
+            </div>
+          </div>
+        </button>
+
+        {/* 3. Call Paramedic */}
+        <button
+          type="button"
+          onClick={() => setShowCallModal(true)}
+          className="p-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-2xl font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center space-x-2.5 cursor-pointer"
+        >
+          <PhoneCall className="w-6 h-6 animate-pulse" />
+          <div className="text-left leading-tight">
+            <div className="text-xs uppercase text-blue-200">Direct Audio</div>
+            <div className="text-sm font-black">Call Ambulance Driver 📞</div>
+          </div>
+        </button>
+
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         
-        {/* Left 8 Cols: Live Patient Telemetry */}
+        {/* Left 8 Cols: Patient Vitals & Live ECG */}
         <div className="lg:col-span-8 space-y-4">
           
-          {/* Main Patient Header Card */}
-          <div className="p-5 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-3.5">
-              <div className="space-y-1">
-                <div className="flex items-center space-x-2">
-                  <span className="text-[10px] font-mono uppercase text-red-600 dark:text-red-400 font-semibold">
-                    Inbound: {amb?.callsign ?? 'MEDIC-12'}
-                  </span>
-                  <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                    Destination: {hosp?.short_name ?? 'AIIMS Gorakhpur'}
-                  </span>
-                </div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                  {inc?.title ?? 'Acute STEMI / Massive MI'}
+          <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-4">
+            
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div>
+                <h3 className="text-base font-black text-slate-900 dark:text-white">
+                  Live Patient Health Signals (Vitals)
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">
-                  Patient Age: <strong className="text-slate-800 dark:text-slate-200 font-semibold">{vitals.age}yo</strong> • Category: <strong className="text-slate-800 dark:text-slate-200 font-semibold">{inc?.category ?? 'Cardiovascular'}</strong>
+                <p className="text-xs text-slate-500">
+                  Transmitted directly from vehicle sensors in real time
                 </p>
               </div>
-
-              {/* ETA Countdown */}
-              <div className="text-right shrink-0 bg-slate-50 dark:bg-slate-850 px-3.5 py-2 rounded-md border border-slate-200 dark:border-slate-800">
-                <span className="text-[10px] font-mono text-slate-400 uppercase block">Time to Bay</span>
-                <div className="text-2xl font-bold font-mono text-red-600 dark:text-red-400 leading-tight">
-                  {formatSecs(amb?.eta_seconds)}
-                </div>
-                <span className="text-[10px] font-mono text-slate-500 block">{amb?.distance_remaining_km ?? 2.4} km away</span>
-              </div>
+              <span className="text-xs font-bold px-3 py-1 rounded-full bg-red-100 text-red-700 border border-red-200">
+                🔴 Code-1 STEMI
+              </span>
             </div>
 
             {/* Live ECG Waveform */}
-            <div className="mt-3.5">
-              <ECGMonitor heartRate={vitals.heart_rate} isCritical={isCritical} />
+            <ECGMonitor heartRate={vitals.heart_rate} />
+
+            {/* 3 Big Vital Cards with Easy Color Indicators */}
+            <div className="grid grid-cols-3 gap-3">
+              
+              {/* Heart Rate */}
+              <div className="bg-red-50 dark:bg-red-950/30 p-3.5 rounded-2xl border border-red-200 dark:border-red-900/60 text-center">
+                <Heart className="w-5 h-5 text-red-600 mx-auto mb-1 animate-bounce" />
+                <div className="text-xs text-red-700 dark:text-red-400 font-bold uppercase">Heart Rate</div>
+                <div className="text-2xl font-black text-slate-900 dark:text-white font-mono mt-0.5">
+                  {vitals.heart_rate} <span className="text-xs font-normal text-slate-400">bpm</span>
+                </div>
+                <span className="text-xs font-bold text-red-600">⚠️ Dangerously High</span>
+              </div>
+
+              {/* Blood Pressure */}
+              <div className="bg-amber-50 dark:bg-amber-950/30 p-3.5 rounded-2xl border border-amber-200 dark:border-amber-900/60 text-center">
+                <Activity className="w-5 h-5 text-amber-600 mx-auto mb-1" />
+                <div className="text-xs text-amber-700 dark:text-amber-400 font-bold uppercase">Blood Pressure</div>
+                <div className="text-2xl font-black text-slate-900 dark:text-white font-mono mt-0.5">
+                  {vitals.systolic_bp}/{vitals.diastolic_bp}
+                </div>
+                <span className="text-xs font-bold text-amber-600">⚠️ Low Pressure</span>
+              </div>
+
+              {/* Oxygen Level */}
+              <div className="bg-blue-50 dark:bg-blue-950/30 p-3.5 rounded-2xl border border-blue-200 dark:border-blue-900/60 text-center">
+                <Wind className="w-5 h-5 text-blue-600 mx-auto mb-1" />
+                <div className="text-xs text-blue-700 dark:text-blue-400 font-bold uppercase">Oxygen (SpO2)</div>
+                <div className="text-2xl font-black text-slate-900 dark:text-white font-mono mt-0.5">
+                  {vitals.spo2}%
+                </div>
+                <span className="text-xs font-bold text-blue-600">⚠️ Give Oxygen Mask</span>
+              </div>
+
             </div>
-
-            {/* Vitals Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-3.5">
-              <div className="p-2.5 rounded-md bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 flex items-center space-x-2.5">
-                <Heart className="w-4 h-4 text-red-600 dark:text-red-400 shrink-0" />
-                <div>
-                  <span className="text-[10px] font-mono text-slate-400 uppercase block">Heart Rate</span>
-                  <span className="text-sm font-mono font-semibold text-slate-900 dark:text-white">{vitals.heart_rate} bpm</span>
-                </div>
-              </div>
-
-              <div className="p-2.5 rounded-md bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 flex items-center space-x-2.5">
-                <Activity className="w-4 h-4 text-slate-600 dark:text-slate-300 shrink-0" />
-                <div>
-                  <span className="text-[10px] font-mono text-slate-400 uppercase block">Blood Pressure</span>
-                  <span className="text-sm font-mono font-semibold text-slate-900 dark:text-white">{vitals.systolic_bp}/{vitals.diastolic_bp}</span>
-                </div>
-              </div>
-
-              <div className="p-2.5 rounded-md bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 flex items-center space-x-2.5">
-                <Wind className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
-                <div>
-                  <span className="text-[10px] font-mono text-slate-400 uppercase block">SpO₂ Sat</span>
-                  <span className={`text-sm font-mono font-semibold ${vitals.spo2 < 90 ? 'text-red-600 dark:text-red-400' : 'text-slate-900 dark:text-white'}`}>
-                    {vitals.spo2}%
-                  </span>
-                </div>
-              </div>
-
-              <div className="p-2.5 rounded-md bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 flex items-center space-x-2.5">
-                <Brain className="w-4 h-4 text-purple-600 dark:text-purple-400 shrink-0" />
-                <div>
-                  <span className="text-[10px] font-mono text-slate-400 uppercase block">GCS Score</span>
-                  <span className="text-sm font-mono font-semibold text-slate-900 dark:text-white">{vitals.gcs_score}/15</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Paramedic Field Notes */}
-            {vitals.notes && (
-              <div className="mt-3.5 p-2.5 rounded-md bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300">
-                <span className="text-[10px] font-mono uppercase text-slate-400 block mb-0.5">
-                  Paramedic En-Route Notes:
-                </span>
-                "{vitals.notes}"
-              </div>
-            )}
 
           </div>
 
         </div>
 
-        {/* Right 4 Cols: Trauma Bay Preparation Checklist */}
-        <div className="lg:col-span-4 space-y-3">
+        {/* Right 4 Cols: Emergency Medication Checklist */}
+        <div className="lg:col-span-4 space-y-4">
           
-          <div className="bg-white dark:bg-slate-900 p-4 rounded-lg border border-slate-200 dark:border-slate-800 space-y-3 shadow-sm">
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2.5">
-              <h3 className="text-xs font-mono font-semibold uppercase tracking-wider text-slate-900 dark:text-white flex items-center space-x-1.5">
-                <CheckCircle2 className="w-3.5 h-3.5 text-slate-500" />
-                <span>Pre-Arrival ER Checklist</span>
-              </h3>
-              <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 font-semibold">
-                {checklist.filter(c => c.done).length}/{checklist.length} Ready
-              </span>
-            </div>
+          <div className="p-5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-3">
+            <h3 className="text-sm font-black text-slate-900 dark:text-white">
+              Prepared Medications & Treatments:
+            </h3>
+            <p className="text-xs text-slate-500">
+              Click to check off items ready in trauma bay:
+            </p>
 
-            <div className="space-y-1.5">
-              {checklist.map((item) => (
+            <div className="space-y-2">
+              {medsList.map((med) => (
                 <button
-                  key={item.id}
-                  onClick={() => toggleChecklistItem(item.id)}
-                  className={`w-full text-left p-2.5 rounded-md border transition-colors flex items-start space-x-2.5 ${
-                    item.done
-                      ? 'bg-slate-50 dark:bg-slate-850 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white'
-                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50'
+                  key={med.id}
+                  type="button"
+                  onClick={() => toggleMed(med.id)}
+                  className={`w-full p-3 rounded-xl border text-left text-xs font-bold transition-all flex items-center space-x-2.5 cursor-pointer ${
+                    med.done
+                      ? 'border-emerald-300 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300'
+                      : 'border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
                   }`}
                 >
-                  <div className="mt-0.5 shrink-0">
-                    {item.done ? (
-                      <CheckSquare className="w-3.5 h-3.5 text-slate-900 dark:text-white" />
-                    ) : (
-                      <Square className="w-3.5 h-3.5 text-slate-400" />
-                    )}
-                  </div>
-                  <div>
-                    <div className={`text-xs ${item.done ? 'font-semibold text-slate-900 dark:text-white' : 'text-slate-700 dark:text-slate-300'}`}>
-                      {item.label}
-                    </div>
-                    {item.required && (
-                      <span className="text-[9px] font-mono uppercase text-red-600 dark:text-red-400">
-                        Priority Protocol
-                      </span>
-                    )}
-                  </div>
+                  {med.done ? (
+                    <CheckSquare className="w-4 h-4 text-emerald-600 shrink-0" />
+                  ) : (
+                    <Square className="w-4 h-4 text-slate-400 shrink-0" />
+                  )}
+                  <span>{med.name}</span>
                 </button>
               ))}
             </div>
 
-            <div className="pt-2 border-t border-slate-100 dark:border-slate-800 text-center">
-              <div className="text-[11px] font-mono text-slate-500">
-                Attending Staff: <strong className="text-slate-700 dark:text-slate-300 font-semibold">ER Resuscitation Team</strong>
-              </div>
-            </div>
-          </div>
-
-          {/* Two-Way Radio Telemetry Channel */}
-          <div className="bg-white dark:bg-slate-900 p-3 rounded-lg border border-slate-200 dark:border-slate-800 space-y-1.5 text-xs font-mono shadow-sm">
-            <span className="text-slate-400 text-[10px] uppercase block">Direct CAD Radio Channel</span>
-            <div className="flex items-center justify-between p-2 rounded bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-800">
-              <span className="text-slate-900 dark:text-white font-semibold">MED-NET 404.25 MHz</span>
-              <span className="text-emerald-600 dark:text-emerald-400">ENCRYPTED</span>
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="w-full py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold transition-colors flex items-center justify-center space-x-1.5 cursor-pointer"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Print Medical Admission Slip</span>
+              </button>
             </div>
           </div>
 
         </div>
 
       </div>
+
+      {/* Call Paramedic Modal */}
+      {showCallModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-center">
+            <div className="w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 mx-auto flex items-center justify-center animate-bounce">
+              <PhoneCall className="w-8 h-8" />
+            </div>
+
+            <div>
+              <h3 className="font-bold text-lg text-slate-900 dark:text-white">
+                Speaking with Paramedic Rajesh (Ambulance)
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Unit: <strong>MEDIC-12 (ALS)</strong>
+              </p>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-850 p-4 rounded-xl border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-mono text-left">
+              "Doctor, patient has had crushing chest pain for 45 mins. 325mg aspirin administered. Oxygen is currently running at 15L. Green wave is active, we are entering the AIIMS corridor now!"
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowCallModal(false)}
+              className="w-full py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-xl transition-colors cursor-pointer"
+            >
+              Close Audio Line
+            </button>
+          </div>
+        </div>
+      )}
 
     </div>
   );

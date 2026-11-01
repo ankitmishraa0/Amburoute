@@ -1,85 +1,335 @@
-import React from 'react';
-import { Gauge, Navigation, Clock, ShieldCheck } from 'lucide-react';
+import React, { useState } from 'react';
+import { 
+  Gauge, 
+  Navigation, 
+  Clock, 
+  ShieldCheck, 
+  Siren, 
+  PhoneCall, 
+  Building2, 
+  CheckCircle2, 
+  Sparkles,
+  Volume2,
+  X
+} from 'lucide-react';
+import { soundFx } from '@/services/sound';
 
-export default function TelemetryHUD({ ambulance, nextSignal }) {
-  const speed = ambulance?.speed_kmh ?? 0;
-  const dist = ambulance?.distance_remaining_km ?? 0;
-  const etaSec = ambulance?.eta_seconds ?? 0;
+export default function TelemetryHUD({ 
+  ambulance, 
+  nextSignal, 
+  signals = [], 
+  setTelemetry,
+  hospitals = [],
+  onSelectHospital,
+  onNavigateTab 
+}) {
+  const [sirenOn, setSirenOn] = useState(ambulance?.siren_active ?? true);
+  const [showCallModal, setShowCallModal] = useState(false);
+  const [showHospitalModal, setShowHospitalModal] = useState(false);
+  const [greenWaveSuccess, setGreenWaveSuccess] = useState(false);
+
+  const speed = ambulance?.speed_kmh ?? 58;
+  const dist = ambulance?.distance_remaining_km ?? 3.2;
+  const etaSec = ambulance?.eta_seconds ?? 240;
   const etaMin = Math.round(etaSec / 60);
 
+  // Big Action 1: Force all signals to GREEN (Green Wave)
+  const handleTurnAllSignalsGreen = () => {
+    try { 
+      soundFx?.playOverride?.(); 
+      soundFx?.playAlert?.();
+    } catch (e) {}
+
+    if (setTelemetry) {
+      setTelemetry(prev => ({
+        ...prev,
+        signals: (prev.signals || []).map(s => ({
+          ...s,
+          state: 'green_wave',
+          prep_countdown_sec: 45
+        }))
+      }));
+    }
+
+    setGreenWaveSuccess(true);
+    setTimeout(() => setGreenWaveSuccess(false), 4000);
+  };
+
+  // Big Action 2: Toggle Emergency Siren
+  const handleToggleSiren = () => {
+    const nextState = !sirenOn;
+    setSirenOn(nextState);
+    try {
+      if (nextState) soundFx?.playSiren?.();
+      else soundFx?.playClick?.();
+    } catch (e) {}
+
+    if (setTelemetry) {
+      setTelemetry(prev => ({
+        ...prev,
+        ambulance: {
+          ...prev.ambulance,
+          siren_active: nextState
+        }
+      }));
+    }
+  };
+
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
-      {/* 1. Velocity */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-3 flex items-center space-x-3 transition-colors">
-        <div className="p-2 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 shrink-0">
-          <Gauge className="w-4 h-4" />
-        </div>
-        <div>
-          <div className="text-[10px] uppercase tracking-wider text-slate-500 font-mono">
-            Ground Speed
-          </div>
-          <div className="flex items-baseline space-x-1">
-            <span className="text-xl font-bold font-mono text-slate-900 dark:text-white">
-              {Math.round(speed)}
+    <div className="space-y-3">
+      
+      {/* Green Wave Celebration Banner */}
+      {greenWaveSuccess && (
+        <div className="p-3 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl shadow-lg flex items-center justify-between animate-bounce">
+          <div className="flex items-center space-x-2">
+            <CheckCircle2 className="w-5 h-5 text-white" />
+            <span className="font-bold text-sm">
+              🛣️ ALL TRAFFIC LIGHTS TURNED GREEN! Clear road ahead for Ambulance!
             </span>
-            <span className="text-[11px] text-slate-400 font-mono">km/h</span>
           </div>
+          <span className="text-xs bg-white/20 px-2 py-0.5 rounded-full font-mono">
+            Green Wave Active
+          </span>
         </div>
+      )}
+
+      {/* 4 Big Action Buttons for Ambulance Driver */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+        
+        {/* 1. Clear Signals Button */}
+        <button
+          type="button"
+          onClick={handleTurnAllSignalsGreen}
+          className="p-3.5 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center space-x-2 cursor-pointer group"
+        >
+          <Sparkles className="w-5 h-5 animate-spin" />
+          <div className="text-left leading-tight">
+            <div className="text-xs uppercase tracking-wide opacity-90">One-Tap Action</div>
+            <div className="text-sm font-black">Turn Signals GREEN 🟢</div>
+          </div>
+        </button>
+
+        {/* 2. Siren Toggle Button */}
+        <button
+          type="button"
+          onClick={handleToggleSiren}
+          className={`p-3.5 rounded-xl font-bold transition-all shadow-md flex items-center justify-center space-x-2 cursor-pointer ${
+            sirenOn
+              ? 'bg-gradient-to-r from-red-600 to-rose-600 text-white ring-2 ring-red-400 animate-pulse'
+              : 'bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-50'
+          }`}
+        >
+          <Siren className="w-5 h-5" />
+          <div className="text-left leading-tight">
+            <div className="text-xs uppercase tracking-wide opacity-90">Emergency Sound</div>
+            <div className="text-sm font-black">{sirenOn ? '🚨 Siren: ACTIVE' : 'Siren: OFF'}</div>
+          </div>
+        </button>
+
+        {/* 3. Choose Hospital Button */}
+        <button
+          type="button"
+          onClick={() => setShowHospitalModal(true)}
+          className="p-3.5 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 hover:border-blue-400 text-slate-800 dark:text-slate-100 rounded-xl font-bold shadow-sm hover:shadow-md transition-all flex items-center justify-center space-x-2 cursor-pointer"
+        >
+          <Building2 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          <div className="text-left leading-tight">
+            <div className="text-xs uppercase tracking-wide text-slate-400">Destination</div>
+            <div className="text-sm font-black">Change Hospital 🏥</div>
+          </div>
+        </button>
+
+        {/* 4. Call Hospital Doctor */}
+        <button
+          type="button"
+          onClick={() => setShowCallModal(true)}
+          className="p-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center space-x-2 cursor-pointer"
+        >
+          <PhoneCall className="w-5 h-5 animate-pulse" />
+          <div className="text-left leading-tight">
+            <div className="text-xs uppercase tracking-wide opacity-90">Direct Audio</div>
+            <div className="text-sm font-black">Call ER Doctor 📞</div>
+          </div>
+        </button>
+
       </div>
 
-      {/* 2. Distance Remaining */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-3 flex items-center space-x-3 transition-colors">
-        <div className="p-2 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 shrink-0">
-          <Navigation className="w-4 h-4" />
-        </div>
-        <div>
-          <div className="text-[10px] uppercase tracking-wider text-slate-500 font-mono">
-            Destination Distance
+      {/* 4 Clean Driver Telemetry Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+        
+        {/* Speed Card */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 flex items-center space-x-3.5 shadow-xs">
+          <div className="p-2.5 rounded-xl bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400">
+            <Gauge className="w-5 h-5" />
           </div>
-          <div className="flex items-baseline space-x-1">
-            <span className="text-xl font-bold font-mono text-slate-900 dark:text-white">
-              {dist.toFixed(1)}
-            </span>
-            <span className="text-[11px] text-slate-400 font-mono">km</span>
+          <div>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              Current Speed
+            </div>
+            <div className="flex items-baseline space-x-1.5">
+              <span className="text-2xl font-black text-slate-900 dark:text-white font-mono">
+                {Math.round(speed)}
+              </span>
+              <span className="text-xs font-bold text-slate-400">km/h</span>
+            </div>
           </div>
         </div>
+
+        {/* Distance Card */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 flex items-center space-x-3.5 shadow-xs">
+          <div className="p-2.5 rounded-xl bg-purple-50 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400">
+            <Navigation className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              Distance Left
+            </div>
+            <div className="flex items-baseline space-x-1.5">
+              <span className="text-2xl font-black text-slate-900 dark:text-white font-mono">
+                {dist.toFixed(1)}
+              </span>
+              <span className="text-xs font-bold text-slate-400">km</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Arrival Card */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 flex items-center space-x-3.5 shadow-xs">
+          <div className="p-2.5 rounded-xl bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400">
+            <Clock className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              Time to Reach
+            </div>
+            <div className="flex items-baseline space-x-1.5">
+              <span className="text-2xl font-black text-red-600 dark:text-red-400 font-mono">
+                {etaMin > 0 ? etaMin : '< 1'}
+              </span>
+              <span className="text-xs font-bold text-slate-400">minutes</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Traffic Signals Ahead */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-3.5 flex items-center space-x-3.5 shadow-xs">
+          <div className="p-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
+            <ShieldCheck className="w-5 h-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              Traffic Signals
+            </div>
+            <div className="text-sm font-bold text-emerald-600 dark:text-emerald-400 truncate">
+              {nextSignal?.state === 'green_wave' ? '🟢 Green Wave Active' : '🟢 Road Signals Synced'}
+            </div>
+            <div className="text-[11px] text-slate-500 truncate">
+              {nextSignal ? nextSignal.name : 'All 4 Junctions Cleared'}
+            </div>
+          </div>
+        </div>
+
       </div>
 
-      {/* 3. Estimated Arrival */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-3 flex items-center space-x-3 transition-colors">
-        <div className="p-2 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 shrink-0">
-          <Clock className="w-4 h-4" />
-        </div>
-        <div>
-          <div className="text-[10px] uppercase tracking-wider text-slate-500 font-mono">
-            Estimated Arrival
-          </div>
-          <div className="flex items-baseline space-x-1">
-            <span className="text-xl font-bold font-mono text-slate-900 dark:text-white">
-              {etaMin > 0 ? etaMin : '< 1'}
-            </span>
-            <span className="text-[11px] text-slate-400 font-mono">min</span>
-          </div>
-        </div>
-      </div>
+      {/* Hospital Selection Modal */}
+      {showHospitalModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+              <div className="flex items-center space-x-2">
+                <Building2 className="w-5 h-5 text-red-600" />
+                <h3 className="font-bold text-base text-slate-900 dark:text-white">
+                  Select Destination Hospital
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowHospitalModal(false)}
+                className="p-1 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
-      {/* 4. Traffic Signal Preemption */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-3 flex items-center space-x-3 transition-colors">
-        <div className="p-2 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 shrink-0">
-          <ShieldCheck className="w-4 h-4" />
+            <p className="text-xs text-slate-500">
+              Select the nearest hospital. The navigation route and traffic green wave will automatically update!
+            </p>
+
+            <div className="space-y-2.5">
+              {hospitals.slice(0, 4).map((hosp) => {
+                const isCurrent = hosp.id === ambulance?.target_hospital_id;
+                return (
+                  <button
+                    key={hosp.id}
+                    type="button"
+                    onClick={() => {
+                      if (onSelectHospital) onSelectHospital(hosp.id);
+                      setShowHospitalModal(false);
+                    }}
+                    className={`w-full p-3.5 rounded-xl border text-left flex items-center justify-between transition-all cursor-pointer ${
+                      isCurrent
+                        ? 'border-red-600 bg-red-50 dark:bg-red-950/40 ring-2 ring-red-400'
+                        : 'border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    <div>
+                      <div className="font-bold text-sm text-slate-900 dark:text-white">
+                        {hosp.name}
+                      </div>
+                      <div className="text-xs text-slate-500 mt-0.5">
+                        Distance: <strong>{hosp.travel_distance_km || 3.2} km</strong> • ICU Beds Free: <strong>{hosp.icu_beds_available || 8}</strong>
+                      </div>
+                    </div>
+
+                    <div className="text-right">
+                      <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${
+                        isCurrent
+                          ? 'bg-red-600 text-white'
+                          : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200'
+                      }`}>
+                        {isCurrent ? 'Current Route' : 'Route Here'}
+                      </span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
-        <div className="min-w-0 flex-1">
-          <div className="text-[10px] uppercase tracking-wider text-slate-500 font-mono">
-            Corridor Preemption
-          </div>
-          <div className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 truncate">
-            {nextSignal?.state === 'green_wave' ? 'Green Wave Clear' : 'Next Cycle Preempted'}
-          </div>
-          <div className="text-[10px] text-slate-400 font-mono truncate">
-            {nextSignal ? nextSignal.name : 'All Intersections Synced'}
+      )}
+
+      {/* Call Doctor Audio Modal */}
+      {showCallModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-center">
+            <div className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 mx-auto flex items-center justify-center animate-bounce">
+              <PhoneCall className="w-8 h-8" />
+            </div>
+
+            <div>
+              <h3 className="font-bold text-lg text-slate-900 dark:text-white">
+                Connected to AIIMS ER Trauma Desk
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Doctor: <strong>Dr. Sharma (Cardiology Head)</strong>
+              </p>
+            </div>
+
+            <div className="bg-slate-50 dark:bg-slate-850 p-4 rounded-xl border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 leading-relaxed font-mono">
+              "Medic-12, we are receiving your live vitals. ER Trauma Bay 3 is cleared and ready. Keep oxygen at 15L. See you in 4 minutes!"
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowCallModal(false)}
+              className="w-full py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-xl transition-colors cursor-pointer"
+            >
+              End Call
+            </button>
           </div>
         </div>
-      </div>
+      )}
+
     </div>
   );
 }

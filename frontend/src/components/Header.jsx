@@ -3,7 +3,6 @@ import {
   Navigation,
   Signal,
   HeartPulse,
-  Stethoscope,
   Building2,
   Shield,
   User,
@@ -12,20 +11,17 @@ import {
   Moon,
   Volume2,
   VolumeX,
-  Info,
-  Activity
+  Activity,
+  CheckCircle2
 } from 'lucide-react';
 import { soundFx } from '@/services/sound';
 
 export default function Header({ 
   activeTab, 
   setActiveTab, 
-  wsStatus, 
-  onOpenPitch, 
-  activeScenarioKey,
   currentUser,
   onLogout,
-  onOpenRoleModal,
+  onSwitchRole,
   theme = 'light',
   toggleTheme
 }) {
@@ -35,7 +31,7 @@ export default function Header({
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
-      setTimeStr(now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+      setTimeStr(now.toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit' }));
     };
     updateTime();
     const interval = setInterval(updateTime, 1000);
@@ -47,145 +43,267 @@ export default function Header({
     setIsMuted(muted);
   };
 
-  const role = currentUser?.role || currentUser?.id || 'driver';
+  const currentRoleKey = currentUser?.role || currentUser?.id || 'driver';
 
-  const allNavItems = [
-    { id: 'command_map', icon: Navigation, label: 'Dispatch Map', sub: 'Live Telemetry', roles: ['driver', 'admin'] },
-    { id: 'signals', icon: Signal, label: 'Traffic Preemption', sub: 'V2I Corridor', roles: ['traffic', 'admin'] },
-    { id: 'handoff', icon: HeartPulse, label: 'Trauma Intake', sub: 'ER Telemetry', roles: ['hospital', 'admin'] },
-    { id: 'triage', icon: Stethoscope, label: 'Clinical Triage', sub: 'Decision Support', roles: ['hospital', 'admin'] },
-    { id: 'hospitals', icon: Building2, label: 'Hospital Directory', sub: 'Bed Matrix', roles: ['driver', 'hospital', 'admin'] },
-    { id: 'admin_panel', icon: Shield, label: 'Admin Console', sub: 'System Ops', roles: ['admin'] },
+  // 4 Primary Roles - Big, clear, kid-simple
+  const primaryRoles = [
+    {
+      id: 'driver',
+      label: 'Driver View',
+      subLabel: 'Ambulance & Route',
+      icon: Navigation,
+      targetTab: 'command_map',
+      activeColor: 'bg-red-600 text-white dark:bg-red-600 dark:text-white ring-2 ring-red-400',
+      badgeColor: 'bg-red-500'
+    },
+    {
+      id: 'hospital',
+      label: 'Doctor View',
+      subLabel: 'Hospital ER Intake',
+      icon: HeartPulse,
+      targetTab: 'handoff',
+      activeColor: 'bg-emerald-600 text-white dark:bg-emerald-600 dark:text-white ring-2 ring-emerald-400',
+      badgeColor: 'bg-emerald-500'
+    },
+    {
+      id: 'traffic',
+      label: 'Traffic Police',
+      subLabel: 'Signal Control',
+      icon: Signal,
+      targetTab: 'signals',
+      activeColor: 'bg-amber-600 text-white dark:bg-amber-600 dark:text-white ring-2 ring-amber-400',
+      badgeColor: 'bg-amber-500'
+    },
+    {
+      id: 'admin',
+      label: 'Admin Deck',
+      subLabel: 'System Overview',
+      icon: Shield,
+      targetTab: 'admin_panel',
+      activeColor: 'bg-indigo-600 text-white dark:bg-indigo-600 dark:text-white ring-2 ring-indigo-400',
+      badgeColor: 'bg-indigo-500'
+    }
   ];
 
-  const navItems = allNavItems.filter(item => item.roles.includes(role));
+  const handleRoleClick = (roleItem) => {
+    try { soundFx?.playClick?.(); } catch (e) {}
+    if (onSwitchRole) {
+      onSwitchRole(roleItem.id);
+    }
+    if (roleItem.targetTab) {
+      setActiveTab(roleItem.targetTab);
+    }
+  };
 
   return (
-    <header className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 sticky top-0 z-30 transition-colors">
-      {/* Top Console Bar */}
-      <div className="max-w-[1780px] mx-auto px-4 sm:px-6 py-2 flex items-center justify-between gap-3">
+    <header className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 sticky top-0 z-40 transition-colors shadow-xs">
+      
+      {/* Main Top Bar */}
+      <div className="max-w-[1780px] mx-auto px-3 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3">
         
         {/* Left: Brand Identity */}
-        <div className="flex items-center space-x-3 shrink-0">
-          <div className="w-8 h-8 rounded-md bg-red-600 dark:bg-red-500 text-white flex items-center justify-center font-bold">
-            <Activity className="w-4 h-4" />
+        <div className="flex items-center space-x-2.5 shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-red-600 to-rose-500 text-white flex items-center justify-center font-bold shadow-md shadow-red-500/20 animate-pulse">
+            <Activity className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center space-x-2">
-              <span className="text-base font-bold tracking-tight text-slate-900 dark:text-white">
-                AmbuRoute <span className="text-red-600 dark:text-red-500 text-xs font-mono font-medium ml-1">CAD</span>
+              <span className="text-lg font-black tracking-tight text-slate-900 dark:text-white">
+                Ambu<span className="text-red-600 dark:text-red-500">Route</span>
               </span>
-              <span className="text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hidden sm:inline-block">
-                Emergency Dispatch
+              <span className="text-[10px] font-bold tracking-wide uppercase px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+                LIVE
               </span>
             </div>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-normal hidden md:block">
-              Dynamic CAD routing, V2I corridor preemption & ER telemetry
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-medium hidden sm:block">
+              Emergency Response Network
             </p>
           </div>
         </div>
 
-        {/* Center: Live Mission Status */}
-        <div className="hidden lg:flex items-center space-x-3 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 px-3 py-1 rounded-md">
-          <div className="flex items-center space-x-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
-            <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
-              CAD Link Active
-            </span>
-          </div>
-          <div className="h-3 w-[1px] bg-slate-200 dark:bg-slate-700"></div>
-          <div className="text-xs font-mono text-slate-600 dark:text-slate-400">
-            UTC {timeStr}
-          </div>
+        {/* Center: The 4 Big Kid-Friendly Role Switcher Tabs */}
+        <div className="flex items-center space-x-1.5 bg-slate-100 dark:bg-slate-800/90 p-1 rounded-xl border border-slate-200 dark:border-slate-700/80 shadow-inner overflow-x-auto scrollbar-none">
+          {primaryRoles.map((r) => {
+            const isRoleActive = currentRoleKey === r.id;
+            const Icon = r.icon;
+
+            return (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => handleRoleClick(r)}
+                className={`flex items-center space-x-2 px-3 sm:px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 whitespace-nowrap cursor-pointer ${
+                  isRoleActive
+                    ? `${r.activeColor} shadow-md scale-102`
+                    : 'text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700/80 hover:text-slate-900 dark:hover:text-white'
+                }`}
+                title={`Switch to ${r.label}`}
+              >
+                <Icon className={`w-4 h-4 ${isRoleActive ? 'text-white' : 'text-slate-500 dark:text-slate-400'}`} />
+                <div className="text-left leading-tight">
+                  <div className="text-xs font-bold">{r.label}</div>
+                  <div className={`text-[9px] font-normal hidden md:block ${isRoleActive ? 'text-white/80' : 'text-slate-400'}`}>
+                    {r.subLabel}
+                  </div>
+                </div>
+                {isRoleActive && (
+                  <CheckCircle2 className="w-3.5 h-3.5 text-white/90 hidden sm:inline-block" />
+                )}
+              </button>
+            );
+          })}
         </div>
 
-        {/* Right: Controls & Role Switcher */}
+        {/* Right: Quick Controls, Profile, & Logout */}
         <div className="flex items-center space-x-1.5 shrink-0 justify-end">
           
-          {/* Operator Badge */}
-          <button
-            onClick={onOpenRoleModal}
-            className="flex items-center space-x-2 px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors text-left"
-            title="Switch operator role"
-          >
-            <div className="p-1 rounded bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200">
-              <User className="w-3.5 h-3.5" />
-            </div>
-            <div className="leading-tight hidden xs:block">
-              <div className="text-[11px] font-semibold text-slate-900 dark:text-white truncate max-w-[130px]">
-                {currentUser?.badge || currentUser?.username || 'Operator'}
-              </div>
-              <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">
-                {currentUser?.role ? currentUser.role.toUpperCase() : 'DRIVER'}
-              </div>
-            </div>
-          </button>
+          {/* Current User Pill */}
+          <div className="hidden xl:flex items-center space-x-2 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-xs">
+            <User className="w-3.5 h-3.5 text-slate-500" />
+            <span className="font-semibold text-slate-800 dark:text-slate-200">
+              {currentUser?.name || currentUser?.badge || 'Operator'}
+            </span>
+            <span className="text-[10px] text-slate-400">({timeStr})</span>
+          </div>
 
-          {/* Theme Toggle */}
+          {/* Theme Toggle (Sun/Moon) */}
           <button
+            type="button"
             onClick={toggleTheme}
-            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            className="p-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors"
+            title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+            className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
           >
             {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
           </button>
 
-          {/* Audio Alert Toggle */}
+          {/* Sound Toggle */}
           <button
+            type="button"
             onClick={handleToggleMute}
-            title={isMuted ? 'Unmute alerts' : 'Mute alerts'}
-            className="p-1.5 rounded-md border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors"
+            title={isMuted ? 'Unmute Emergency Alerts' : 'Mute Sound'}
+            className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition-colors cursor-pointer"
           >
-            {isMuted ? <VolumeX className="w-4 h-4 text-slate-400" /> : <Volume2 className="w-4 h-4 text-slate-700 dark:text-slate-300" />}
+            {isMuted ? <VolumeX className="w-4 h-4 text-slate-400" /> : <Volume2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />}
           </button>
 
-          {/* Architecture / Specs */}
+          {/* Logout Button */}
           <button
-            onClick={onOpenPitch}
-            className="flex items-center space-x-1 px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium transition-colors"
-            title="System specifications and architecture"
-          >
-            <Info className="w-3.5 h-3.5 text-slate-500" />
-            <span className="hidden md:inline">Architecture</span>
-          </button>
-
-          {/* Logout */}
-          <button
+            type="button"
             onClick={onLogout}
-            className="flex items-center space-x-1 px-2.5 py-1 rounded-md border border-slate-200 dark:border-slate-700 hover:border-red-200 dark:hover:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-700 dark:hover:text-red-400 text-slate-600 dark:text-slate-300 text-xs font-medium transition-colors"
-            title="Log out session"
+            className="flex items-center space-x-1.5 px-3 py-2 rounded-lg border border-red-200 dark:border-red-900/60 bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 text-xs font-bold transition-colors cursor-pointer"
+            title="Log Out of System"
           >
             <LogOut className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Logout</span>
+            <span>Logout</span>
           </button>
         </div>
+
       </div>
 
-      {/* Navigation Sub-bar */}
-      <div className="max-w-[1780px] mx-auto px-4 sm:px-6 flex items-center space-x-1 overflow-x-auto py-1 border-t border-slate-100 dark:border-slate-800 scrollbar-none">
-        {navItems.map((item) => {
-          const isActive = activeTab === item.id;
-          const Icon = item.icon;
-
-          return (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap ${
-                isActive
-                  ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
-                  : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-              }`}
-            >
-              <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white dark:text-slate-900' : 'text-slate-500'}`} />
-              <span>{item.label}</span>
-              <span className={`text-[10px] font-mono ml-1 ${isActive ? 'text-slate-300 dark:text-slate-600' : 'text-slate-400'}`}>
-                {item.sub}
+      {/* Sub-bar for Secondary Views (Hospital Directory & Triage) */}
+      {(currentRoleKey === 'driver' || currentRoleKey === 'hospital' || currentRoleKey === 'admin') && (
+        <div className="bg-slate-50 dark:bg-slate-950/60 border-t border-slate-200/80 dark:border-slate-800/80 px-4 py-1.5">
+          <div className="max-w-[1780px] mx-auto flex items-center justify-between gap-2">
+            <div className="flex items-center space-x-2 text-xs">
+              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider hidden sm:inline">
+                Quick Views:
               </span>
-            </button>
-          );
-        })}
-      </div>
+              
+              {currentRoleKey === 'driver' && (
+                <>
+                  <button
+                    onClick={() => setActiveTab('command_map')}
+                    className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                      activeTab === 'command_map'
+                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    🗺️ Live GPS Navigation
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('hospitals')}
+                    className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                      activeTab === 'hospitals'
+                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    🏥 Hospital Bed Directory
+                  </button>
+                </>
+              )}
+
+              {currentRoleKey === 'hospital' && (
+                <>
+                  <button
+                    onClick={() => setActiveTab('handoff')}
+                    className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                      activeTab === 'handoff'
+                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    🩺 Patient ER Intake
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('hospitals')}
+                    className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                      activeTab === 'hospitals'
+                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    🛏️ Hospital Bed Status
+                  </button>
+                </>
+              )}
+
+              {currentRoleKey === 'admin' && (
+                <>
+                  <button
+                    onClick={() => setActiveTab('admin_panel')}
+                    className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                      activeTab === 'admin_panel'
+                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    ⚙️ Master Admin Panel
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('command_map')}
+                    className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                      activeTab === 'command_map'
+                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    🗺️ Fleet Map
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('signals')}
+                    className={`px-3 py-1 rounded-md text-xs font-semibold transition-colors cursor-pointer ${
+                      activeTab === 'signals'
+                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'
+                    }`}
+                  >
+                    🚦 City Signals
+                  </button>
+                </>
+              )}
+            </div>
+
+            <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 shrink-0">
+              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+              All Systems Operational
+            </span>
+          </div>
+        </div>
+      )}
+
     </header>
   );
 }

@@ -383,6 +383,11 @@ export default function App() {
     s => s.state === 'green_wave' || s.state === 'amber_prep'
   ) || telemetry?.signals?.[0];
 
+  const handleSwitchRoleById = (roleId) => {
+    const matchedRole = PORTAL_ROLES.find(r => r.id === roleId) || PORTAL_ROLES[0];
+    handleSelectRole(matchedRole);
+  };
+
   // If not logged in, render the dedicated Full-Screen Login Page!
   if (!currentUser) {
     return <LoginPage onLogin={handleLogin} theme={theme} toggleTheme={toggleTheme} />;
@@ -391,7 +396,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col font-sans transition-colors">
       
-      {/* Header - Operator Profile, Logout, Clean Navigation */}
+      {/* Header - 4 Primary Role Tabs, Theme, Audio, Profile */}
       <Header
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -401,6 +406,7 @@ export default function App() {
         currentUser={currentUser}
         onLogout={handleLogout}
         onOpenRoleModal={() => setIsRoleModalOpen(true)}
+        onSwitchRole={handleSwitchRoleById}
         theme={theme}
         toggleTheme={toggleTheme}
       />
@@ -412,68 +418,19 @@ export default function App() {
       />
 
       {/* Main Module Content Area */}
-      <main className="flex-1 max-w-[1780px] w-full mx-auto p-4 sm:p-6 space-y-6">
-        
-        {/* Active Operational Status Bar */}
-        <div className="px-4 py-2.5 rounded-md border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 flex items-center justify-center font-bold">
-              {(currentUser?.role === 'admin' || currentUser?.id === 'admin') ? <Shield className="w-4 h-4" /> :
-               (currentUser?.role === 'hospital' || currentUser?.id === 'hospital') ? <Building2 className="w-4 h-4" /> :
-               (currentUser?.role === 'traffic' || currentUser?.id === 'traffic') ? <Signal className="w-4 h-4" /> :
-               <Navigation className="w-4 h-4" />}
-            </div>
-            <div>
-              <div className="flex items-center space-x-2">
-                <span className="text-xs font-semibold uppercase font-mono tracking-wider text-slate-900 dark:text-white">
-                  {currentRole?.label || currentRole?.name}
-                </span>
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300">
-                  {currentUser?.badge || currentRole?.badge}
-                </span>
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-900 dark:bg-white text-white dark:text-slate-900">
-                  {(currentUser?.role === 'admin' || currentUser?.id === 'admin') ? 'All Modules Enabled' : 'Role-Restricted Console'}
-                </span>
-              </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Operator: <strong className="text-slate-800 dark:text-slate-200">{currentUser?.name}</strong> • {currentRole?.department || currentRole?.description}
-              </p>
-            </div>
-          </div>
+      <main className="flex-1 max-w-[1780px] w-full mx-auto p-3 sm:p-5 space-y-4">
 
-          <div className="flex items-center space-x-2 shrink-0 self-end sm:self-auto">
-            {(currentUser?.role === 'admin' || currentUser?.id === 'admin') ? (
-              <button
-                onClick={() => setIsRoleModalOpen(true)}
-                className="px-2.5 py-1 rounded-md bg-white dark:bg-slate-800 hover:bg-slate-50 border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-200 text-xs font-medium transition-colors"
-              >
-                Switch Console View
-              </button>
-            ) : (
-              <button
-                onClick={handleLogout}
-                className="px-2.5 py-1 rounded-md bg-white dark:bg-slate-800 hover:bg-slate-50 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300 text-xs font-medium transition-colors"
-              >
-                Switch Role / Logout
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Guided Primary Task Progression Bar */}
-        <TaskProgressBar
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          telemetry={telemetry}
-          currentUser={currentUser}
-        />
-
-        {/* TAB 1: COMMAND & GIS MAP */}
+        {/* TAB 1: COMMAND & GIS MAP (DRIVER VIEW) */}
         {activeTab === 'command_map' && (
           <div className="space-y-4">
             <TelemetryHUD
               ambulance={telemetry?.ambulance}
               nextSignal={nextSignal}
+              signals={telemetry?.signals}
+              setTelemetry={setTelemetry}
+              hospitals={hospitals}
+              onSelectHospital={handleSelectHospital}
+              onNavigateTab={setActiveTab}
             />
 
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[560px] lg:h-[620px]">
