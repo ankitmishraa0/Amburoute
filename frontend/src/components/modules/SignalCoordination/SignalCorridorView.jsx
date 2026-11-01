@@ -141,21 +141,11 @@ export default function SignalCorridorView({
             <button
               type="button"
               onClick={handleResetAutomated}
-              className="px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 text-slate-700 dark:text-slate-300 text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 text-slate-700 dark:text-slate-300 text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <RefreshCw className="w-3.5 h-3.5" />
               <span>Normal Traffic</span>
             </button>
-
-            {onNavigateTab && (
-              <button
-                type="button"
-                onClick={() => onNavigateTab('command_map')}
-                className="px-3 py-2 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-xs font-bold transition-colors cursor-pointer"
-              >
-                View Map 🗺️
-              </button>
-            )}
           </div>
         </div>
 

@@ -124,29 +124,16 @@ export default function IncidentQueue({
         </div>
 
         {onNavigateTab && (
-          <div className="space-y-2">
-            <button
-              type="button"
-              onClick={() => onNavigateTab('signals')}
-              className="w-full py-2.5 px-3.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs transition-colors flex items-center justify-between shadow-xs cursor-pointer"
-            >
-              <span className="flex items-center gap-1.5">
-                <span>🚦</span> View Traffic Signals Deck
-              </span>
-              <ChevronRight className="w-4 h-4" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => onNavigateTab('handoff')}
-              className="w-full py-2.5 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors flex items-center justify-between shadow-xs cursor-pointer"
-            >
-              <span className="flex items-center gap-1.5">
-                <span>🩺</span> View Hospital ER Intake
-              </span>
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => onNavigateTab('hospitals')}
+            className="w-full py-2.5 px-3.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-colors flex items-center justify-between shadow-xs cursor-pointer"
+          >
+            <span className="flex items-center gap-1.5">
+              <span>🏥</span> View Hospital Bed Directory
+            </span>
+            <ChevronRight className="w-4 h-4" />
+          </button>
         )}
       </div>
 
