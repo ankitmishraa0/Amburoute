@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Shield, Building2, Signal, Navigation } from 'lucide-react';
+import { Shield, Building2, Signal, Navigation, PhoneCall, CheckCircle } from 'lucide-react';
 import Header from './components/Header';
 import SimulationBar from './components/SimulationBar';
 import HeroPitchModal from './components/HeroPitchModal';
@@ -12,6 +12,7 @@ import TaskProgressBar from './components/TaskProgressBar';
 import LiveMap from './components/modules/CommandMap/LiveMap';
 import IncidentQueue from './components/modules/CommandMap/IncidentQueue';
 import TelemetryHUD from './components/modules/CommandMap/TelemetryHUD';
+import DriverStandbyView from './components/modules/CommandMap/DriverStandbyView';
 import SignalCorridorView from './components/modules/SignalCoordination/SignalCorridorView';
 import HospitalMatrixView from './components/modules/HospitalMatrix/HospitalMatrixView';
 import AIRiskView from './components/modules/AIRiskAssessment/AIRiskView';
@@ -117,6 +118,7 @@ export default function App() {
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
   const [currentRole, setCurrentRole] = useState(PORTAL_ROLES[0]);
   const [currentUser, setCurrentUser] = useState(null); // Full security: Login required
+  const [driverActiveMission, setDriverActiveMission] = useState(null); // Standby vs Active Mission
   const [theme, setTheme] = useState(() => {
     const saved = localStorage.getItem('amburoute_theme');
     if (saved) return saved;
@@ -215,13 +217,15 @@ export default function App() {
     if (!acceptedRide) return;
     try { soundFx?.playSuccess?.(); } catch (e) {}
 
+    setDriverActiveMission(acceptedRide);
+
     const pickupCoords = acceptedRide.pickupCoords || { lat: 26.7606, lng: 83.3732 };
 
     setTelemetry(prev => ({
       ...prev,
       incident: {
         ...prev.incident,
-        title: `Patient Emergency: ${acceptedRide.emergencyType || 'Medical Emergency'}`,
+        title: `Patient Emergency: ${acceptedRide.patientName || 'Citizen Patient'} (${acceptedRide.emergencyType || 'Medical Emergency'})`,
         address: acceptedRide.pickupAddress,
         coordinates: pickupCoords
       },
@@ -231,6 +235,14 @@ export default function App() {
         active_patient_ride: acceptedRide
       }
     }));
+  };
+
+  const handleCompleteDriverMission = () => {
+    if (driverActiveMission) {
+      rideService.completeRide(driverActiveMission.rideId);
+    }
+    setDriverActiveMission(null);
+    try { soundFx?.playSuccess?.(); } catch (e) {}
   };
 
   const handleSelectRole = (role) => {
@@ -262,6 +274,7 @@ export default function App() {
 
   const handleLogout = () => {
     setCurrentUser(null);
+    setDriverActiveMission(null);
   };
 
   // Handle dynamic location relocation (My GPS, Gorakhpur, or search)
@@ -477,40 +490,105 @@ export default function App() {
 
         {/* TAB 1: COMMAND & GIS MAP (DRIVER VIEW) */}
         {activeTab === 'command_map' && (
-          <div className="space-y-4">
-            <TelemetryHUD
-              ambulance={telemetry?.ambulance}
-              nextSignal={nextSignal}
-              signals={telemetry?.signals}
-              setTelemetry={setTelemetry}
-              hospitals={hospitals}
-              onSelectHospital={handleSelectHospital}
-              onNavigateTab={setActiveTab}
+          currentUser?.role === 'driver' && !driverActiveMission ? (
+            <DriverStandbyView
+              currentUser={currentUser}
+              onSimulateIncomingRequest={() => {}}
             />
+          ) : (
+            <div className="space-y-4">
+              {/* Active Emergency Mission Banner (when Driver accepted ride) */}
+              {currentUser?.role === 'driver' && driverActiveMission && (
+                <div className="bg-gradient-to-r from-red-950 via-slate-900 to-red-950 border-2 border-red-500 rounded-3xl p-4 sm:p-5 shadow-2xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-4 animate-fade-in text-white ring-4 ring-red-500/20">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 rounded-2xl bg-red-600/30 border border-red-500 flex items-center justify-center text-2xl shrink-0 animate-pulse">
+                      🚨
+                    </div>
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase bg-red-500 text-white shadow-sm">
+                          LIVE PATIENT MISSION IN PROGRESS
+                        </span>
+                        <span className="text-xs text-red-300 font-bold">
+                          Patient: {driverActiveMission.patientName || 'Citizen Patient'}
+                        </span>
+                      </div>
+                      <div className="text-base sm:text-lg font-black mt-0.5">
+                        📍 Pickup: {driverActiveMission.pickupAddress}
+                      </div>
+                      <div className="text-xs text-slate-300">
+                        🏥 Hospital: <span className="text-emerald-400 font-bold">{driverActiveMission.hospitalName || 'AIIMS Gorakhpur Super-Specialty ER'}</span>
+                      </div>
+                    </div>
+                  </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[560px] lg:h-[620px]">
-              {/* Map Left 8-9 Cols */}
-              <div className="lg:col-span-8 xl:col-span-9 h-[540px] lg:h-full">
-                <LiveMap
-                  telemetry={telemetry}
-                  hospitals={hospitals}
-                  onLocationRelocated={handleLocationRelocated}
-                  onSelectHospital={handleSelectHospital}
-                />
-              </div>
+                  <div className="flex items-center space-x-2.5 shrink-0">
+                    {/* Voice Call Patient Button */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        try { soundFx?.playClick?.(); } catch (e) {}
+                        callService.makeCall({
+                          targetRole: 'patient',
+                          callType: 'voice',
+                          callerName: `Ambulance MEDIC-12 (${currentUser?.name || 'Driver'})`,
+                          targetName: driverActiveMission.patientName || 'Citizen Patient',
+                          department: 'Patient Intercom'
+                        });
+                      }}
+                      className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 text-white font-black text-xs shadow-lg flex items-center space-x-1.5 cursor-pointer ring-2 ring-emerald-400/40"
+                    >
+                      <PhoneCall className="w-4 h-4 fill-current" />
+                      <span>Call Patient (Voice) 📞</span>
+                    </button>
 
-              {/* Incidents Feed Right 3-4 Cols */}
-              <div className="lg:col-span-4 xl:col-span-3 h-full">
-                <IncidentQueue
-                  incidents={incidents}
-                  activeIncident={telemetry?.incident}
-                  onSelectScenario={handleSelectScenario}
-                  currentScenarioKey={telemetry?.scenario_key}
-                  onNavigateTab={setActiveTab}
-                />
+                    {/* Complete Mission Button */}
+                    <button
+                      type="button"
+                      onClick={handleCompleteDriverMission}
+                      className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-black text-xs border border-slate-700 shadow-md flex items-center space-x-1.5 cursor-pointer"
+                    >
+                      <CheckCircle className="w-4 h-4 text-emerald-400" />
+                      <span>Finish & Standby 🏁</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <TelemetryHUD
+                ambulance={telemetry?.ambulance}
+                nextSignal={nextSignal}
+                signals={telemetry?.signals}
+                setTelemetry={setTelemetry}
+                hospitals={hospitals}
+                onSelectHospital={handleSelectHospital}
+                onNavigateTab={setActiveTab}
+              />
+
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-[560px] lg:h-[620px]">
+                {/* Map Left 8-9 Cols */}
+                <div className="lg:col-span-8 xl:col-span-9 h-[540px] lg:h-full">
+                  <LiveMap
+                    telemetry={telemetry}
+                    hospitals={hospitals}
+                    onLocationRelocated={handleLocationRelocated}
+                    onSelectHospital={handleSelectHospital}
+                  />
+                </div>
+
+                {/* Incidents Feed Right 3-4 Cols */}
+                <div className="lg:col-span-4 xl:col-span-3 h-full">
+                  <IncidentQueue
+                    incidents={incidents}
+                    activeIncident={telemetry?.incident}
+                    onSelectScenario={handleSelectScenario}
+                    currentScenarioKey={telemetry?.scenario_key}
+                    onNavigateTab={setActiveTab}
+                  />
+                </div>
               </div>
             </div>
-          </div>
+          )
         )}
 
         {/* TAB 2: TRAFFIC-SIGNAL PRE-COORDINATION */}

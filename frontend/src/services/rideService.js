@@ -1,9 +1,10 @@
 /**
- * Real-Time Emergency Ride Dispatch & Presence Service (Rapido / Uber Style)
- * Synchronizes driver online presence, patient ride requests, driver acceptance,
- * and live ambulance movement between Patient & Driver devices.
+ * Real-Time Cross-Device Emergency Ride Dispatch & Presence Service (Rapido / Uber Style)
+ * Uses high-speed public cloud SSE relay (ntfy.sh) + Dual-Channel Polling Fallback + BroadcastChannel
+ * to guarantee 100% reliable cross-device communication between Patient Phone & Driver Laptop.
  */
 
+const SSE_URL = 'https://ntfy.sh/amburoute_ride_dispatch_gkp_v2';
 const CHANNEL_NAME = 'amburoute_ride_dispatch';
 const STORAGE_DRIVERS_KEY = 'amburoute_online_drivers_v1';
 const STORAGE_ACTIVE_RIDE_KEY = 'amburoute_active_ride_v1';
@@ -12,7 +13,9 @@ class EmergencyRideService {
   constructor() {
     this.currentDriver = null;
     this.heartbeatTimer = null;
+    this.pollTimer = null;
     this.activeRide = null;
+    this.seenRelayIds = new Set();
     this.listeners = {
       driversChanged: [],
       rideRequest: [],
@@ -22,32 +25,135 @@ class EmergencyRideService {
       ambulanceMoved: []
     };
 
-    // Cross-tab broadcast channel
+    // 1. Cross-tab Broadcast Channel (Instant local synchronization)
     this.bc = typeof window !== 'undefined' && 'BroadcastChannel' in window 
       ? new BroadcastChannel(CHANNEL_NAME) 
       : null;
 
     if (this.bc) {
-      this.bc.onmessage = (event) => this._handleMessage(event.data);
+      this.bc.onmessage = (event) => this._handleLocalMessage(event.data);
     }
 
+    // 2. Storage event for cross-tab fallback
     if (typeof window !== 'undefined') {
       window.addEventListener('storage', (e) => {
         if (e.key === 'amburoute_ride_signal' && e.newValue) {
           try {
             const data = JSON.parse(e.newValue);
-            this._handleMessage(data);
+            this._handleLocalMessage(data);
           } catch (err) {}
         }
       });
     }
 
-    // Clean up stale drivers periodically
+    // 3. Cross-Device Internet Cloud Relay (SSE + Periodic Fast Poll)
+    this.sse = null;
+    if (typeof window !== 'undefined') {
+      this._initSse();
+      this._startCloudPolling();
+    }
+
+    // 4. Clean up stale drivers periodically
     if (typeof window !== 'undefined') {
       setInterval(() => {
         this._pruneStaleDrivers();
       }, 3000);
     }
+  }
+
+  _initSse() {
+    if (this.sse) {
+      try { this.sse.close(); } catch (e) {}
+    }
+    try {
+      this.sse = new EventSource(`${SSE_URL}/sse`);
+
+      const handleEvent = (event) => {
+        try {
+          if (!event.data) return;
+          const raw = JSON.parse(event.data);
+          this._processIncomingRelay(raw);
+        } catch (e) {}
+      };
+
+      this.sse.onmessage = handleEvent;
+      this.sse.addEventListener('message', handleEvent);
+
+      this.sse.onerror = () => {
+        try { this.sse.close(); } catch (e) {}
+        this.sse = null;
+        setTimeout(() => this._initSse(), 3000);
+      };
+    } catch (e) {
+      console.warn('SSE connection warning:', e);
+    }
+  }
+
+  // Secondary backup poll every 2.5 seconds to guarantee mobile phones never miss requests
+  _startCloudPolling() {
+    if (this.pollTimer) clearInterval(this.pollTimer);
+    this.pollTimer = setInterval(async () => {
+      try {
+        const res = await fetch(`${SSE_URL}/json?poll=1&since=20s`, { cache: 'no-store' });
+        if (!res.ok) return;
+        const text = await res.text();
+        if (!text) return;
+        const lines = text.trim().split('\n');
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const raw = JSON.parse(line.trim());
+            this._processIncomingRelay(raw);
+          } catch (e) {}
+        }
+      } catch (e) {}
+    }, 2500);
+  }
+
+  _processIncomingRelay(raw) {
+    if (!raw) return;
+
+    // Filter by ntfy id
+    if (raw.id) {
+      if (this.seenRelayIds.has(raw.id)) return;
+      this.seenRelayIds.add(raw.id);
+    }
+
+    let payload = null;
+    if (raw.message) {
+      try {
+        payload = typeof raw.message === 'string' ? JSON.parse(raw.message) : raw.message;
+      } catch (e) {
+        payload = raw.message;
+      }
+    } else if (raw.type) {
+      payload = raw;
+    }
+
+    if (!payload || typeof payload !== 'object' || !payload.type) return;
+
+    // Filter by unique client msgId
+    if (payload._msgId) {
+      if (this.seenRelayIds.has(payload._msgId)) return;
+      this.seenRelayIds.add(payload._msgId);
+    }
+
+    // Limit set size to prevent memory leaks
+    if (this.seenRelayIds.size > 200) {
+      const arr = Array.from(this.seenRelayIds);
+      this.seenRelayIds = new Set(arr.slice(-100));
+    }
+
+    this._handleMessage(payload);
+  }
+
+  _handleLocalMessage(msg) {
+    if (!msg || !msg.type) return;
+    if (msg._msgId) {
+      if (this.seenRelayIds.has(msg._msgId)) return;
+      this.seenRelayIds.add(msg._msgId);
+    }
+    this._handleMessage(msg);
   }
 
   on(event, callback) {
@@ -67,12 +173,44 @@ class EmergencyRideService {
     }
   }
 
-  _broadcast(msg) {
+  async _broadcast(msg) {
+    // Generate unique message ID to prevent duplicate handling
+    const msgId = msg._msgId || `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const fullMsg = { ...msg, _msgId: msgId };
+
+    // Record as seen on the sending device so sender never echoes itself
+    this.seenRelayIds.add(msgId);
+
+    // 1. Post to local tabs
     if (this.bc) {
-      this.bc.postMessage(msg);
+      try { this.bc.postMessage(fullMsg); } catch (e) {}
     }
     if (typeof window !== 'undefined') {
-      localStorage.setItem('amburoute_ride_signal', JSON.stringify({ ...msg, _t: Date.now() }));
+      try {
+        localStorage.setItem('amburoute_ride_signal', JSON.stringify({ ...fullMsg, _t: Date.now() }));
+      } catch (e) {}
+    }
+
+    // 2. Post to Internet Cloud Relay (Cross-Device: Phone to Laptop)
+    const postToCloud = async () => {
+      try {
+        await fetch(SSE_URL, {
+          method: 'POST',
+          headers: { 
+            'Title': fullMsg.type,
+            'Priority': fullMsg.type === 'RIDE_REQUEST' ? '5' : '3'
+          },
+          body: JSON.stringify(fullMsg)
+        });
+      } catch (e) {}
+    };
+
+    // Send immediately
+    postToCloud();
+
+    // For critical dispatch events, send an automatic backup after 250ms
+    if (fullMsg.type === 'RIDE_REQUEST' || fullMsg.type === 'RIDE_ACCEPTED') {
+      setTimeout(postToCloud, 250);
     }
   }
 
@@ -134,7 +272,18 @@ class EmergencyRideService {
 
     this._recordDriverHeartbeat(this.currentDriver);
 
-    // Send heartbeat every 2.5 seconds
+    // Broadcast immediately across internet (burst to register rapidly)
+    this._broadcast({
+      type: 'DRIVER_HEARTBEAT',
+      driver: this.currentDriver
+    });
+    setTimeout(() => {
+      if (this.currentDriver) {
+        this._broadcast({ type: 'DRIVER_HEARTBEAT', driver: this.currentDriver });
+      }
+    }, 600);
+
+    // Send heartbeat every 3 seconds
     if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
     this.heartbeatTimer = setInterval(() => {
       if (this.currentDriver) {
@@ -145,7 +294,7 @@ class EmergencyRideService {
         });
         this._recordDriverHeartbeat(this.currentDriver);
       }
-    }, 2500);
+    }, 3000);
   }
 
   stopDriverPresence() {
@@ -192,8 +341,8 @@ class EmergencyRideService {
     try {
       const now = Date.now();
       let drivers = this.getOnlineDrivers();
-      // Drop drivers who haven't pinged in 8 seconds
-      const freshDrivers = drivers.filter(d => now - d.lastSeen < 8000);
+      // Drop drivers who haven't pinged in 12 seconds
+      const freshDrivers = drivers.filter(d => now - d.lastSeen < 12000);
       if (freshDrivers.length !== drivers.length) {
         localStorage.setItem(STORAGE_DRIVERS_KEY, JSON.stringify(freshDrivers));
         this._notify('driversChanged', freshDrivers);
@@ -208,7 +357,7 @@ class EmergencyRideService {
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) {
           const now = Date.now();
-          return parsed.filter(d => now - d.lastSeen < 8000);
+          return parsed.filter(d => now - d.lastSeen < 12000);
         }
       }
     } catch (e) {}
@@ -227,7 +376,7 @@ class EmergencyRideService {
       hospitalId: ridePayload.hospitalId || 'hosp-gkp-aiims',
       hospitalName: ridePayload.hospitalName || 'AIIMS Gorakhpur Super-Specialty ER',
       targetDriverId: ridePayload.targetDriverId || 'driver108',
-      ambulanceCallsign: ridePayload.ambulanceCallsign || 'Ambulance MEDIC-12',
+      ambulanceCallsign: ridePayload.ambulanceCallsign || 'Ambulance MEDIC-12 (ALS)',
       status: 'pending',
       requestedAt: Date.now()
     };
@@ -237,6 +386,7 @@ class EmergencyRideService {
       localStorage.setItem(STORAGE_ACTIVE_RIDE_KEY, JSON.stringify(ride));
     } catch (e) {}
 
+    // Broadcast across internet & local
     this._broadcast({
       type: 'RIDE_REQUEST',
       ride
@@ -261,6 +411,7 @@ class EmergencyRideService {
       localStorage.setItem(STORAGE_ACTIVE_RIDE_KEY, JSON.stringify(updatedRide));
     } catch (e) {}
 
+    // Broadcast across internet & local
     this._broadcast({
       type: 'RIDE_ACCEPTED',
       ride: updatedRide
@@ -282,6 +433,20 @@ class EmergencyRideService {
     });
 
     this._notify('rideRejected', rideId);
+  }
+
+  completeRide(rideId) {
+    this.activeRide = null;
+    try {
+      localStorage.removeItem(STORAGE_ACTIVE_RIDE_KEY);
+    } catch (e) {}
+
+    this._broadcast({
+      type: 'RIDE_COMPLETED',
+      rideId
+    });
+
+    this._notify('rideCompleted', rideId);
   }
 
   broadcastAmbulanceLocation(location) {

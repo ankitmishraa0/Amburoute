@@ -512,14 +512,30 @@ export default function PatientPortalView({
                 </div>
 
                 {/* Helpful Instant Standby Option for Testing */}
-                <button
-                  type="button"
-                  onClick={handleSimulateDriverLogin}
-                  className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer inline-flex items-center gap-1.5"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Activate Standby Driver: MEDIC-12 (ALS)</span>
-                </button>
+                <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => handleRequestRide({
+                      id: 'driver108',
+                      name: 'Ambulance MEDIC-12 (ALS Super-Care)',
+                      callsign: 'Ambulance MEDIC-12 (ALS)',
+                      badge: 'UNIT #108'
+                    })}
+                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 text-white font-black text-xs shadow-md transition-all cursor-pointer inline-flex items-center gap-2 ring-2 ring-red-400/40"
+                  >
+                    <Navigation className="w-3.5 h-3.5" />
+                    <span>Dispatch 108 Emergency Ambulance (MEDIC-12) ➔</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleSimulateDriverLogin}
+                    className="px-3.5 py-2 rounded-xl bg-amber-600/80 hover:bg-amber-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer inline-flex items-center gap-1.5"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Sync Driver Presence</span>
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="space-y-2.5">
