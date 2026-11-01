@@ -108,7 +108,7 @@ export default function App() {
   const [isPitchOpen, setIsPitchOpen] = useState(false);
   const [isRoleModalOpen, setIsRoleModalOpen] = useState(false);
   const [currentRole, setCurrentRole] = useState(PORTAL_ROLES[0]);
-  const [currentUser, setCurrentUser] = useState(PORTAL_ROLES[0]); // Default to Ambulance Paramedic directly
+  const [currentUser, setCurrentUser] = useState(null); // Full security: Login required
   const [theme, setTheme] = useState(() => {
     const saved = localStorage.getItem('amburoute_theme');
     if (saved) return saved;

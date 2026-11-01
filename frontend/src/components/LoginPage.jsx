@@ -32,8 +32,8 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
   const [selectedRoleKey, setSelectedRoleKey] = useState('driver');
 
   // Login Form State
-  const [username, setUsername] = useState('driver108');
-  const [password, setPassword] = useState('1080');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
   const [successBanner, setSuccessBanner] = useState(null);
@@ -126,11 +126,6 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
   // Select department role preset
   const handleRoleSelect = (key) => {
     setSelectedRoleKey(key);
-    const role = ROLE_MAP[key];
-    if (role) {
-      setUsername(role.demoUsername || '');
-      setPassword(role.demoPassword || '');
-    }
     setErrorMessage(null);
   };
 
