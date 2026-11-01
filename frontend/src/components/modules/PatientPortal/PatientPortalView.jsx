@@ -367,19 +367,24 @@ export default function PatientPortalView({
                       </div>
                     </div>
 
-                    <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
+                    <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800 gap-1.5">
                       <div className="text-right">
-                        <span className="text-xs font-bold text-slate-400 uppercase block">Emergency Fare</span>
-                        <span className="text-base font-black text-emerald-600 dark:text-emerald-400">FREE (Govt)</span>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase block">Emergency Fare</span>
+                        <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">FREE (Govt 108)</span>
                       </div>
                       
-                      <div className={`mt-1.5 px-3 py-1 rounded-xl text-xs font-black ${
-                        isSelected 
-                          ? 'bg-red-600 text-white' 
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
-                      }`}>
-                        {isSelected ? '✓ SELECTED' : 'SELECT'}
-                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedAmbulanceId(amb.id);
+                          handleBookAmbulance();
+                        }}
+                        className="px-4 py-2 rounded-xl text-xs font-black bg-red-600 hover:bg-red-700 text-white shadow-xs hover:shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Navigation className="w-3.5 h-3.5" />
+                        <span>Book Ambulance</span>
+                      </button>
                     </div>
                   </div>
                 );
@@ -448,25 +453,6 @@ export default function PatientPortalView({
                 );
               })}
             </div>
-          </div>
-
-          {/* THE BIG RED 1-CLICK RAPIDO-STYLE BOOKING BUTTON */}
-          <div className="pt-2">
-            <button
-              type="button"
-              onClick={handleBookAmbulance}
-              className="w-full py-5 px-6 rounded-3xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-700 hover:to-rose-800 text-white font-black text-lg shadow-2xl hover:shadow-red-500/30 transition-all flex items-center justify-center space-x-3 cursor-pointer ring-4 ring-red-500/30 scale-100 hover:scale-[1.01]"
-            >
-              <Sparkles className="w-6 h-6 animate-spin text-red-200" />
-              <span>🚨 1-CLICK CONFIRM EMERGENCY AMBULANCE BOOKING</span>
-              <span className="text-xs font-mono bg-white/20 px-3 py-1 rounded-full uppercase tracking-wider">
-                RAPIDO STYLE
-              </span>
-            </button>
-
-            <p className="text-xs text-center text-slate-400 mt-2 font-medium">
-              Nearest active ambulance driver will be instantly dispatched to your GPS location with automated green wave clearance!
-            </p>
           </div>
 
         </div>
