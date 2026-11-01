@@ -127,3 +127,57 @@ async def websocket_telemetry_endpoint(websocket: WebSocket):
         simulation_engine.unregister_websocket(websocket)
     except Exception:
         simulation_engine.unregister_websocket(websocket)
+
+
+# ================= REAL-TIME EMERGENCY RIDE DISPATCH =================
+
+ACTIVE_RIDE_STATE: Dict[str, Any] = {
+    "active_ride": None, 
+    "online_drivers": [
+        {
+            "id": "driver108",
+            "name": "Paramedic Rajesh Sharma",
+            "callsign": "Ambulance MEDIC-12 (ALS Super-Care)",
+            "phone": "+91 98765-43210",
+            "status": "available",
+            "type": "ALS Super-Care (ICU on Wheels)",
+            "badge": "UNIT MEDIC-12 (ALS)"
+        }
+    ]
+}
+
+
+@router.get("/ride/state")
+def get_ride_state() -> Dict[str, Any]:
+    return ACTIVE_RIDE_STATE
+
+
+@router.post("/ride/dispatch")
+def dispatch_ride(payload: Dict[str, Any]) -> Dict[str, Any]:
+    ride = payload.get("ride")
+    ACTIVE_RIDE_STATE["active_ride"] = ride
+    return {"status": "ok", "active_ride": ACTIVE_RIDE_STATE["active_ride"]}
+
+
+@router.post("/ride/accept")
+def accept_ride(payload: Dict[str, Any]) -> Dict[str, Any]:
+    ride = payload.get("ride")
+    ACTIVE_RIDE_STATE["active_ride"] = ride
+    return {"status": "accepted", "active_ride": ACTIVE_RIDE_STATE["active_ride"]}
+
+
+@router.post("/ride/complete")
+def complete_ride() -> Dict[str, Any]:
+    ACTIVE_RIDE_STATE["active_ride"] = None
+    return {"status": "completed"}
+
+
+@router.post("/drivers/heartbeat")
+def driver_heartbeat(payload: Dict[str, Any]) -> Dict[str, Any]:
+    driver = payload.get("driver")
+    if driver and "id" in driver:
+        drivers = [d for d in ACTIVE_RIDE_STATE["online_drivers"] if d.get("id") != driver["id"]]
+        drivers.append(driver)
+        ACTIVE_RIDE_STATE["online_drivers"] = drivers
+    return {"status": "ok", "online_drivers": ACTIVE_RIDE_STATE["online_drivers"]}
+

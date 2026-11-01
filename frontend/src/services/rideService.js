@@ -1,26 +1,30 @@
 /**
- * AmbuRoute High-Speed Cross-Device Real-Time Emergency Ride Dispatch & Presence Service
- * Uses Global Cloud REST State Sync (api.restful-api.dev) + BroadcastChannel + LocalStorage
- * Guaranteed 100% reliable across any physical devices (phone, laptop, Wi-Fi, 4G, 5G, Vercel)
- * with ZERO timeouts, ZERO rate limits, and ZERO ISP blocks.
+ * AmbuRoute High-Performance Real-Time Emergency Ride Dispatch Service
+ * Multi-layer Hybrid Architecture:
+ * 1. Local Network / API Sync (/api/ride/state) - zero external dependency
+ * 2. WebRTC P2P DataChannel (PeerJS) - direct cross-device internet communication
+ * 3. BroadcastChannel & LocalStorage - sub-millisecond local tab synchronization
  */
 
-const SHARED_CLOUD_ID = 'ff808181a09d98f701a19876d06401df';
-const CLOUD_STATE_URL = `https://api.restful-api.dev/objects/${SHARED_CLOUD_ID}`;
+import { Peer } from 'peerjs';
+
 const CHANNEL_NAME = 'amburoute_ride_dispatch';
 const STORAGE_DRIVERS_KEY = 'amburoute_online_drivers_v1';
 const STORAGE_ACTIVE_RIDE_KEY = 'amburoute_active_ride_v1';
+const DRIVER_PEER_ID = 'amburoute-gkp-driver-108';
 
 class EmergencyRideService {
   constructor() {
     this.currentDriver = null;
-    this.heartbeatTimer = null;
-    this.syncTimer = null;
     this.activeRide = null;
     this.onlineDrivers = [];
-    this.lastProcessedRideId = null;
-    this.lastProcessedRideStatus = null;
-    this.isUpdatingCloud = false;
+    this.lastRideId = null;
+    this.lastRideStatus = null;
+    this.driverPeer = null;
+    this.patientPeer = null;
+    this.activeP2PConn = null;
+    this.apiSyncTimer = null;
+    this.heartbeatTimer = null;
 
     this.listeners = {
       driversChanged: [],
@@ -31,13 +35,13 @@ class EmergencyRideService {
       ambulanceMoved: []
     };
 
-    // 1. Cross-tab instant local communication
+    // 1. Cross-tab Broadcast Channel (Instant local sync)
     this.bc = typeof window !== 'undefined' && 'BroadcastChannel' in window 
       ? new BroadcastChannel(CHANNEL_NAME) 
       : null;
 
     if (this.bc) {
-      this.bc.onmessage = (event) => this._handleLocalMessage(event.data);
+      this.bc.onmessage = (event) => this._handleMessage(event.data);
     }
 
     // 2. Storage event for cross-tab fallback
@@ -45,128 +49,157 @@ class EmergencyRideService {
       window.addEventListener('storage', (e) => {
         if (e.key === 'amburoute_ride_signal' && e.newValue) {
           try {
-            const data = JSON.parse(e.newValue);
-            this._handleLocalMessage(data);
+            this._handleMessage(JSON.parse(e.newValue));
           } catch (err) {}
         }
       });
     }
 
-    // 3. Start Cloud State Polling Sync (every 1.2 seconds)
+    // 3. Start Local / LAN API Polling Sync (every 1 second)
     if (typeof window !== 'undefined') {
-      this._startCloudSync();
+      this._startApiSync();
     }
   }
 
-  // ================= CLOUD STATE SYNC =================
+  // ================= 1. LOCAL API SYNC (/api/ride/state) =================
 
-  _startCloudSync() {
-    if (this.syncTimer) clearInterval(this.syncTimer);
-    
-    // Initial fetch immediately
-    this._fetchCloudState();
-
-    // Poll every 1.2s for near-instant response
-    this.syncTimer = setInterval(() => {
-      this._fetchCloudState();
-    }, 1200);
+  _startApiSync() {
+    if (this.apiSyncTimer) clearInterval(this.apiSyncTimer);
+    this._fetchApiState();
+    this.apiSyncTimer = setInterval(() => {
+      this._fetchApiState();
+    }, 1000);
   }
 
-  async _fetchCloudState() {
-    if (this.isUpdatingCloud) return;
+  async _fetchApiState() {
     try {
-      const res = await fetch(CLOUD_STATE_URL, { cache: 'no-store' });
+      const res = await fetch('/api/ride/state', { cache: 'no-store' });
       if (!res.ok) return;
-      const json = await res.json();
-      const state = json?.data;
-      if (!state) return;
+      const data = await res.json();
+      if (!data) return;
 
-      // 1. Process Online Drivers Presence
-      if (Array.isArray(state.onlineDrivers)) {
-        const now = Date.now();
-        // Keep drivers active within last 20 seconds
-        const active = state.onlineDrivers.filter(d => (now - (d.lastSeen || 0)) < 20000);
-        this.onlineDrivers = active;
-        localStorage.setItem(STORAGE_DRIVERS_KEY, JSON.stringify(active));
-        this._notify('driversChanged', active);
+      // Sync online drivers
+      if (Array.isArray(data.online_drivers)) {
+        this.onlineDrivers = data.online_drivers;
+        localStorage.setItem(STORAGE_DRIVERS_KEY, JSON.stringify(data.online_drivers));
+        this._notify('driversChanged', data.online_drivers);
       }
 
-      // 2. Process Active Ride Dispatch State
-      const cloudRide = state.activeRide;
-      if (cloudRide && cloudRide.rideId) {
-        // If this is a new pending ride request that hasn't been handled yet
-        if (cloudRide.status === 'pending') {
-          if (this.lastProcessedRideId !== cloudRide.rideId || this.lastProcessedRideStatus !== 'pending') {
-            this.lastProcessedRideId = cloudRide.rideId;
-            this.lastProcessedRideStatus = 'pending';
-            this.activeRide = cloudRide;
-            console.log('🚨 [RideService] Cloud PENDING Ride Request Detected:', cloudRide);
-            this._notify('rideRequest', cloudRide);
+      // Sync active ride
+      const remoteRide = data.active_ride;
+      if (remoteRide && remoteRide.rideId) {
+        if (remoteRide.status === 'pending') {
+          if (this.lastRideId !== remoteRide.rideId || this.lastRideStatus !== 'pending') {
+            this.lastRideId = remoteRide.rideId;
+            this.lastRideStatus = 'pending';
+            this.activeRide = remoteRide;
+            console.log('🚨 [RideService] Pending Ride from API:', remoteRide);
+            this._notify('rideRequest', remoteRide);
           }
-        } else if (cloudRide.status === 'accepted') {
-          if (this.lastProcessedRideId === cloudRide.rideId && this.lastProcessedRideStatus !== 'accepted') {
-            this.lastProcessedRideId = cloudRide.rideId;
-            this.lastProcessedRideStatus = 'accepted';
-            this.activeRide = cloudRide;
-            console.log('✅ [RideService] Cloud ACCEPTED Ride Detected:', cloudRide);
-            this._notify('rideAccepted', cloudRide);
-          }
-        } else if (cloudRide.status === 'rejected') {
-          if (this.lastProcessedRideId === cloudRide.rideId && this.lastProcessedRideStatus !== 'rejected') {
-            this.lastProcessedRideStatus = 'rejected';
-            this.activeRide = null;
-            this._notify('rideRejected', cloudRide.rideId);
+        } else if (remoteRide.status === 'accepted') {
+          if (this.lastRideId === remoteRide.rideId && this.lastRideStatus !== 'accepted') {
+            this.lastRideId = remoteRide.rideId;
+            this.lastRideStatus = 'accepted';
+            this.activeRide = remoteRide;
+            console.log('✅ [RideService] Accepted Ride from API:', remoteRide);
+            this._notify('rideAccepted', remoteRide);
           }
         }
       } else {
-        // Ride cleared
-        if (this.activeRide && this.lastProcessedRideStatus) {
+        if (this.activeRide && this.lastRideStatus) {
           const oldId = this.activeRide.rideId;
           this.activeRide = null;
-          this.lastProcessedRideId = null;
-          this.lastProcessedRideStatus = null;
+          this.lastRideId = null;
+          this.lastRideStatus = null;
           this._notify('rideCompleted', oldId);
         }
       }
     } catch (e) {
-      // Network hiccup, will retry in 1.2s
+      // Local API unavailable (e.g. running purely on static host), WebRTC and local channels take over
     }
   }
 
-  async _saveCloudState(patchFn) {
-    this.isUpdatingCloud = true;
+  // ================= 2. WEBRTC P2P DATACHANNEL (PeerJS) =================
+
+  _initDriverPeer() {
+    if (this.driverPeer) return;
     try {
-      // 1. Read latest
-      let currentData = { activeRide: null, onlineDrivers: [] };
-      try {
-        const getRes = await fetch(CLOUD_STATE_URL, { cache: 'no-store' });
-        if (getRes.ok) {
-          const json = await getRes.json();
-          if (json?.data) currentData = json.data;
+      this.driverPeer = new Peer(DRIVER_PEER_ID, {
+        debug: 0,
+        config: {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:global.stun.twilio.com:3478' }
+          ]
         }
-      } catch (e) {}
+      });
 
-      // 2. Apply modifications
-      const updatedData = patchFn(currentData) || currentData;
-      updatedData.lastUpdated = Date.now();
+      this.driverPeer.on('open', () => {
+        console.log('[PeerJS] Driver Peer Ready on WebRTC:', DRIVER_PEER_ID);
+      });
 
-      // 3. Write back with PUT
-      await fetch(CLOUD_STATE_URL, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: 'AmbuRoute_Dispatch_Shared_State',
-          data: updatedData
-        })
+      this.driverPeer.on('connection', (conn) => {
+        this.activeP2PConn = conn;
+        console.log('[PeerJS] Patient Connected via WebRTC DataChannel!');
+
+        conn.on('data', (data) => {
+          console.log('[PeerJS] Driver received P2P message:', data);
+          if (data?.type === 'RIDE_REQUEST') {
+            this._handleMessage(data);
+          }
+        });
+      });
+
+      this.driverPeer.on('error', (err) => {
+        console.warn('[PeerJS] Driver notice:', err.type);
       });
     } catch (e) {
-      console.warn('Cloud state save error:', e);
-    } finally {
-      this.isUpdatingCloud = false;
+      console.warn('[PeerJS] Driver peer init error:', e);
     }
   }
 
-  // ================= EVENT LISTENER SUITE =================
+  _sendP2PToDriver(payload) {
+    try {
+      if (!this.patientPeer) {
+        this.patientPeer = new Peer(null, {
+          debug: 0,
+          config: {
+            iceServers: [
+              { urls: 'stun:stun.l.google.com:19302' },
+              { urls: 'stun:global.stun.twilio.com:3478' }
+            ]
+          }
+        });
+      }
+
+      const transmit = () => {
+        try {
+          const conn = this.patientPeer.connect(DRIVER_PEER_ID, { reliable: true });
+          this.activeP2PConn = conn;
+
+          conn.on('open', () => {
+            console.log('[PeerJS] WebRTC connection established to driver. Sending payload:', payload);
+            conn.send(payload);
+          });
+
+          conn.on('data', (data) => {
+            console.log('[PeerJS] Patient received reply from driver:', data);
+            if (data?.type === 'RIDE_ACCEPTED') {
+              this._handleMessage(data);
+            }
+          });
+        } catch (e) {}
+      };
+
+      if (this.patientPeer.open) {
+        transmit();
+      } else {
+        this.patientPeer.on('open', transmit);
+      }
+    } catch (e) {}
+  }
+
+  // ================= 3. DISPATCH & RIDE STATE LOGIC =================
 
   on(event, callback) {
     if (this.listeners[event]) {
@@ -196,32 +229,41 @@ class EmergencyRideService {
     }
   }
 
-  _handleLocalMessage(msg) {
+  _handleMessage(msg) {
     if (!msg || !msg.type) return;
+
     switch (msg.type) {
       case 'RIDE_REQUEST':
         this.activeRide = msg.ride;
-        this.lastProcessedRideId = msg.ride?.rideId;
-        this.lastProcessedRideStatus = 'pending';
+        this.lastRideId = msg.ride?.rideId;
+        this.lastRideStatus = 'pending';
         this._notify('rideRequest', msg.ride);
         break;
+
       case 'RIDE_ACCEPTED':
         this.activeRide = msg.ride;
-        this.lastProcessedRideId = msg.ride?.rideId;
-        this.lastProcessedRideStatus = 'accepted';
+        this.lastRideId = msg.ride?.rideId;
+        this.lastRideStatus = 'accepted';
         this._notify('rideAccepted', msg.ride);
         break;
+
       case 'RIDE_REJECTED':
         this.activeRide = null;
+        this.lastRideStatus = 'rejected';
         this._notify('rideRejected', msg.rideId);
         break;
+
       case 'RIDE_COMPLETED':
         this.activeRide = null;
+        this.lastRideId = null;
+        this.lastRideStatus = null;
         this._notify('rideCompleted', msg.rideId);
         break;
+
       case 'DRIVER_HEARTBEAT':
         this._recordDriverHeartbeat(msg.driver);
         break;
+
       default:
         break;
     }
@@ -244,34 +286,31 @@ class EmergencyRideService {
       lastSeen: Date.now()
     };
 
-    // Update local immediately
+    // 1. Initialize Driver WebRTC P2P Receiver
+    this._initDriverPeer();
+
+    // 2. Broadcast local heartbeat
     this._recordDriverHeartbeat(this.currentDriver);
     this._broadcastLocal({ type: 'DRIVER_HEARTBEAT', driver: this.currentDriver });
 
-    // Update cloud state
-    const updateCloudDriver = () => {
-      this._saveCloudState((state) => {
-        let drivers = Array.isArray(state.onlineDrivers) ? [...state.onlineDrivers] : [];
-        const idx = drivers.findIndex(d => d.id === this.currentDriver.id);
-        const record = { ...this.currentDriver, lastSeen: Date.now() };
-        if (idx >= 0) {
-          drivers[idx] = record;
-        } else {
-          drivers.push(record);
-        }
-        return { ...state, onlineDrivers: drivers };
-      });
+    // 3. Post to backend API
+    const pingApi = () => {
+      fetch('/api/drivers/heartbeat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ driver: this.currentDriver })
+      }).catch(() => {});
     };
 
-    updateCloudDriver();
+    pingApi();
 
-    // Heartbeat every 4 seconds
     if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
     this.heartbeatTimer = setInterval(() => {
       if (this.currentDriver) {
         this.currentDriver.lastSeen = Date.now();
         this._recordDriverHeartbeat(this.currentDriver);
-        updateCloudDriver();
+        this._broadcastLocal({ type: 'DRIVER_HEARTBEAT', driver: this.currentDriver });
+        pingApi();
       }
     }, 4000);
   }
@@ -282,17 +321,12 @@ class EmergencyRideService {
       this.heartbeatTimer = null;
     }
 
-    if (this.currentDriver) {
-      const dId = this.currentDriver.id;
-      this.currentDriver = null;
-      this._removeDriver(dId);
-
-      this._saveCloudState((state) => {
-        let drivers = Array.isArray(state.onlineDrivers) ? [...state.onlineDrivers] : [];
-        drivers = drivers.filter(d => d.id !== dId);
-        return { ...state, onlineDrivers: drivers };
-      });
+    if (this.driverPeer) {
+      try { this.driverPeer.destroy(); } catch (e) {}
+      this.driverPeer = null;
     }
+
+    this.currentDriver = null;
   }
 
   _recordDriverHeartbeat(driver) {
@@ -310,15 +344,6 @@ class EmergencyRideService {
     } catch (e) {}
   }
 
-  _removeDriver(driverId) {
-    try {
-      let drivers = this.getOnlineDrivers();
-      drivers = drivers.filter(d => d.id !== driverId);
-      localStorage.setItem(STORAGE_DRIVERS_KEY, JSON.stringify(drivers));
-      this._notify('driversChanged', drivers);
-    } catch (e) {}
-  }
-
   getOnlineDrivers() {
     if (this.onlineDrivers && this.onlineDrivers.length > 0) {
       return this.onlineDrivers;
@@ -331,7 +356,6 @@ class EmergencyRideService {
       }
     } catch (e) {}
 
-    // Fallback baseline on-duty ambulance so citizen patient can ALWAYS book
     return [
       {
         id: 'driver108',
@@ -367,8 +391,8 @@ class EmergencyRideService {
     };
 
     this.activeRide = ride;
-    this.lastProcessedRideId = ride.rideId;
-    this.lastProcessedRideStatus = 'pending';
+    this.lastRideId = ride.rideId;
+    this.lastRideStatus = 'pending';
 
     try {
       localStorage.setItem(STORAGE_ACTIVE_RIDE_KEY, JSON.stringify(ride));
@@ -377,15 +401,17 @@ class EmergencyRideService {
     // 1. Post to local tabs immediately
     this._broadcastLocal({ type: 'RIDE_REQUEST', ride });
 
-    // 2. Post to Global Cloud State for cross-device instant sync
-    this._saveCloudState((state) => {
-      return {
-        ...state,
-        activeRide: ride
-      };
-    });
+    // 2. Post to Local / LAN Backend API
+    fetch('/api/ride/dispatch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ride })
+    }).catch(() => {});
 
-    console.log('🚀 [RideService] DISPATCHED EMERGENCY RIDE TO CLOUD:', ride);
+    // 3. Post to WebRTC P2P DataChannel (Cross-device internet)
+    this._sendP2PToDriver({ type: 'RIDE_REQUEST', ride });
+
+    console.log('🚀 [RideService] Dispatched Emergency Ride via Hybrid Network:', ride);
     return ride;
   }
 
@@ -401,8 +427,8 @@ class EmergencyRideService {
     };
 
     this.activeRide = updatedRide;
-    this.lastProcessedRideId = updatedRide.rideId;
-    this.lastProcessedRideStatus = 'accepted';
+    this.lastRideId = updatedRide.rideId;
+    this.lastRideStatus = 'accepted';
 
     try {
       localStorage.setItem(STORAGE_ACTIVE_RIDE_KEY, JSON.stringify(updatedRide));
@@ -411,22 +437,28 @@ class EmergencyRideService {
     // 1. Post to local tabs immediately
     this._broadcastLocal({ type: 'RIDE_ACCEPTED', ride: updatedRide });
 
-    // 2. Post to Global Cloud State for cross-device instant sync
-    this._saveCloudState((state) => {
-      return {
-        ...state,
-        activeRide: updatedRide
-      };
-    });
+    // 2. Post to Local / LAN Backend API
+    fetch('/api/ride/accept', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ride: updatedRide })
+    }).catch(() => {});
+
+    // 3. Send over WebRTC P2P to patient
+    if (this.activeP2PConn && this.activeP2PConn.open) {
+      try {
+        this.activeP2PConn.send({ type: 'RIDE_ACCEPTED', ride: updatedRide });
+      } catch (e) {}
+    }
 
     this._notify('rideAccepted', updatedRide);
-    console.log('🟢 [RideService] DRIVER ACCEPTED RIDE IN CLOUD:', updatedRide);
+    console.log('🟢 [RideService] Driver Accepted Ride via Hybrid Network:', updatedRide);
     return updatedRide;
   }
 
   rejectRide(rideId) {
     this.activeRide = null;
-    this.lastProcessedRideStatus = 'rejected';
+    this.lastRideStatus = 'rejected';
 
     try {
       localStorage.removeItem(STORAGE_ACTIVE_RIDE_KEY);
@@ -434,20 +466,21 @@ class EmergencyRideService {
 
     this._broadcastLocal({ type: 'RIDE_REJECTED', rideId });
 
-    this._saveCloudState((state) => {
-      return {
-        ...state,
-        activeRide: null
-      };
-    });
+    fetch('/api/ride/complete', { method: 'POST' }).catch(() => {});
+
+    if (this.activeP2PConn && this.activeP2PConn.open) {
+      try {
+        this.activeP2PConn.send({ type: 'RIDE_REJECTED', rideId });
+      } catch (e) {}
+    }
 
     this._notify('rideRejected', rideId);
   }
 
   completeRide(rideId) {
     this.activeRide = null;
-    this.lastProcessedRideId = null;
-    this.lastProcessedRideStatus = null;
+    this.lastRideId = null;
+    this.lastRideStatus = null;
 
     try {
       localStorage.removeItem(STORAGE_ACTIVE_RIDE_KEY);
@@ -455,12 +488,13 @@ class EmergencyRideService {
 
     this._broadcastLocal({ type: 'RIDE_COMPLETED', rideId });
 
-    this._saveCloudState((state) => {
-      return {
-        ...state,
-        activeRide: null
-      };
-    });
+    fetch('/api/ride/complete', { method: 'POST' }).catch(() => {});
+
+    if (this.activeP2PConn && this.activeP2PConn.open) {
+      try {
+        this.activeP2PConn.send({ type: 'RIDE_COMPLETED', rideId });
+      } catch (e) {}
+    }
 
     this._notify('rideCompleted', rideId);
   }
