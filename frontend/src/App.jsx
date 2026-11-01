@@ -27,6 +27,11 @@ import {
 } from './services/api';
 import { soundFx } from './services/sound';
 import { GORAKHPUR_HOSPITALS, generateRouteAndSignals, SCENARIOS_DATA } from './services/locationHospitals';
+import { callService } from './services/callService';
+
+// Real-Time Cross-Device Calling UI
+import IncomingCallNotification from './components/common/IncomingCallNotification';
+import EmergencyCallModal from './components/common/EmergencyCallModal';
 
 // Initial Gorakhpur Route & Telemetry Preset
 const { waypoints: GKP_WAYPOINTS, signals: GKP_SIGNALS } = generateRouteAndSignals(
@@ -178,6 +183,14 @@ export default function App() {
       setActiveTab(defaultTabByRole[roleKey] || 'command_map');
     }
   }, [currentUser, activeTab]);
+
+  // Initialize Cross-Device WebRTC / Signal Call Service for logged-in role
+  useEffect(() => {
+    if (currentUser) {
+      const roleKey = currentUser?.role || currentUser?.id || 'driver';
+      callService.init(roleKey);
+    }
+  }, [currentUser]);
 
   const handleSelectRole = (role) => {
     setCurrentRole(role);
@@ -528,6 +541,10 @@ export default function App() {
         currentRole={currentRole}
         onSelectRole={handleSelectRole}
       />
+
+      {/* Real-Time Telemedicine Video & Voice Calling across devices */}
+      <IncomingCallNotification />
+      <EmergencyCallModal telemetry={telemetry} />
 
     </div>
   );

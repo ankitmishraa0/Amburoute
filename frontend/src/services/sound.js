@@ -81,6 +81,33 @@ class SoundEngine {
     setTimeout(() => this.playBeep(659.25, 'sine', 0.1, 0.08), 80);
     setTimeout(() => this.playBeep(783.99, 'sine', 0.18, 0.1), 160);
   }
+
+  playSiren() {
+    if (this.isMuted) return;
+    this.playBeep(960, 'sawtooth', 0.3, 0.12);
+    setTimeout(() => this.playBeep(770, 'sawtooth', 0.3, 0.12), 300);
+  }
+
+  startRinging() {
+    if (this.isMuted || this.ringInterval) return;
+    const ringPattern = () => {
+      this.playBeep(440, 'sine', 0.4, 0.15);
+      setTimeout(() => this.playBeep(480, 'sine', 0.4, 0.15), 50);
+      setTimeout(() => {
+        this.playBeep(440, 'sine', 0.4, 0.15);
+        setTimeout(() => this.playBeep(480, 'sine', 0.4, 0.15), 50);
+      }, 500);
+    };
+    ringPattern();
+    this.ringInterval = setInterval(ringPattern, 2500);
+  }
+
+  stopRinging() {
+    if (this.ringInterval) {
+      clearInterval(this.ringInterval);
+      this.ringInterval = null;
+    }
+  }
 }
 
 export const soundFx = new SoundEngine();
