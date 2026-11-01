@@ -61,6 +61,18 @@ export const DEFAULT_USERS = [
     assignedTab: 'signals',
     createdAt: '2026-01-01',
     description: 'Real-time V2I intersection preemption, automated green wave corridors, and manual cycle overrides.'
+  },
+  {
+    id: 'patient',
+    username: 'patient',
+    name: 'Citizen / Patient (Emergency SOS)',
+    role: 'patient',
+    department: 'Emergency SOS Rider',
+    badge: 'CITIZEN RIDER',
+    status: 'active',
+    assignedTab: 'patient_portal',
+    createdAt: '2026-01-01',
+    description: '1-Tap ambulance booking (Zomato/Rapido style), nearby ambulances, and hospital ICU bed availability.'
   }
 ];
 
@@ -415,7 +427,8 @@ export const userService = {
       admin: 'admin123',
       driver108: '1080',
       doctor_aiims: 'aiims123',
-      traffic_gkp: 'traffic123'
+      traffic_gkp: 'traffic123',
+      patient: '123'
     };
 
     if (hardcodedAuth[cleanUsername] && hardcodedAuth[cleanUsername] === cleanPassword) {
@@ -467,6 +480,7 @@ export const userService = {
       driver: 'command_map',
       hospital: 'handoff',
       traffic: 'signals',
+      patient: 'patient_portal',
       admin: 'admin_panel'
     };
 
@@ -474,6 +488,7 @@ export const userService = {
       driver: 'Ambulance Crew (ALS/BLS)',
       hospital: 'Hospital Emergency Room',
       traffic: 'Traffic Police ITMS',
+      patient: 'Emergency SOS Rider',
       admin: 'Master Administration'
     };
 

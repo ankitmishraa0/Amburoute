@@ -58,6 +58,10 @@ export default function Header({
     traffic: [
       { id: 'signals', label: '🚦 Traffic Signal Preemption', icon: Signal, desc: 'Green Wave Corridor' },
     ],
+    patient: [
+      { id: 'patient_portal', label: '🚑 Book Ambulance (SOS)', icon: Navigation, desc: 'Zomato/Rapido style booking' },
+      { id: 'hospitals', label: '🏥 Emergency Hospitals', icon: Building2, desc: 'Nearby ICU beds' },
+    ],
     admin: [
       { id: 'admin_panel', label: '⚙️ Admin Deck', icon: Shield, desc: 'Control Center' },
       { id: 'command_map', label: '🗺️ Fleet Map', icon: Navigation, desc: 'Ambulance GPS' },
@@ -84,6 +88,11 @@ export default function Header({
       badge: '🚦 ITMS CONTROL',
       department: 'Traffic Police ITMS',
       station: 'City Traffic Signal Control'
+    },
+    patient: {
+      badge: '👤 CITIZEN SOS',
+      department: 'Emergency SOS Rider',
+      station: 'Patient Booking Terminal'
     },
     admin: {
       badge: '🛡️ SUPER ADMIN',

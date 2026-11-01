@@ -5,6 +5,126 @@
  */
 import { Peer } from 'peerjs';
 
+// Pre-defined directory of Doctors on duty in Emergency Department
+export const DOCTORS_DIRECTORY = [
+  {
+    id: 'doc-sharma',
+    name: 'Dr. Rajesh Sharma',
+    roleKey: 'hospital',
+    specialty: 'Head of Interventional Cardiology & Cath Lab',
+    department: 'Cardiology / STEMI Bay 1',
+    hospital: 'AIIMS Gorakhpur',
+    status: 'Available in Bay 1',
+    statusColor: 'emerald',
+    badge: 'CATH LAB READY',
+    avatar: '👨‍⚕️',
+    phoneExt: 'Ext 101'
+  },
+  {
+    id: 'doc-verma',
+    name: 'Dr. Priya Verma',
+    roleKey: 'hospital',
+    specialty: 'Senior Trauma & Emergency Resuscitation Specialist',
+    department: 'Trauma Resus Bay A',
+    hospital: 'AIIMS Gorakhpur',
+    status: 'On-Duty Ready',
+    statusColor: 'emerald',
+    badge: 'RESUS TEAM LEAD',
+    avatar: '👩‍⚕️',
+    phoneExt: 'Ext 104'
+  },
+  {
+    id: 'doc-gupta',
+    name: 'Dr. Anjali Gupta',
+    roleKey: 'hospital',
+    specialty: 'Neurocritical Care & Acute Stroke Specialist',
+    department: 'Neuro ICU Wing',
+    hospital: 'AIIMS Gorakhpur',
+    status: 'Ready on Standby',
+    statusColor: 'emerald',
+    badge: 'STROKE CODE',
+    avatar: '👩‍⚕️',
+    phoneExt: 'Ext 108'
+  },
+  {
+    id: 'doc-general-er',
+    name: 'AIIMS Central Trauma ER Desk',
+    roleKey: 'hospital',
+    specialty: '24x7 Emergency Triage & Duty Medical Officer',
+    department: 'ER Main Triage Intake',
+    hospital: 'AIIMS Gorakhpur',
+    status: '24x7 Hotline Active',
+    statusColor: 'emerald',
+    badge: 'ER HOTLINE',
+    avatar: '🏥',
+    phoneExt: 'Ext 100'
+  }
+];
+
+// Pre-defined directory of Ambulances in Gorakhpur
+export const AMBULANCES_DIRECTORY = [
+  {
+    id: 'amb-medic-12',
+    callsign: 'Ambulance MEDIC-12 (ALS Super-Care)',
+    roleKey: 'driver',
+    type: 'ALS (Advanced Life Support)',
+    crew: 'Driver Rajesh Sharma & Paramedic J. Miller',
+    phone: '+91 98765-43210',
+    location: 'Golghar Commercial Hub, Gorakhpur',
+    status: 'En Route to AIIMS (Code-1 STEMI)',
+    statusColor: 'red',
+    eta: '3 mins',
+    rating: 4.9,
+    features: ['Ventilator', 'Defibrillator', '12-Lead ECG', 'Paramedic on Board'],
+    avatar: '🚑'
+  },
+  {
+    id: 'amb-medic-04',
+    callsign: 'Ambulance MEDIC-04 (ALS Cardiac Express)',
+    roleKey: 'driver',
+    type: 'ALS (Cardiac Life Support)',
+    crew: 'Driver Amit Kumar & Nurse Sunita',
+    phone: '+91 98765-43211',
+    location: 'Medical College Road, Gorakhpur',
+    status: 'Available / Standby',
+    statusColor: 'emerald',
+    eta: '6 mins',
+    rating: 4.8,
+    features: ['Cardiac Monitor', 'Oxygen Support', 'Stretcher'],
+    avatar: '🚑'
+  },
+  {
+    id: 'amb-medic-09',
+    callsign: 'Ambulance MEDIC-09 (BLS Rapid First Aid)',
+    roleKey: 'driver',
+    type: 'BLS (Basic Life Support)',
+    crew: 'Driver Sunil Yadav',
+    phone: '+91 98765-43212',
+    location: 'Mohaddipur Junction, Gorakhpur',
+    status: 'Available / Standby',
+    statusColor: 'emerald',
+    eta: '8 mins',
+    rating: 4.7,
+    features: ['Oxygen Cylinder', 'First Aid Trauma Kit'],
+    avatar: '🚑'
+  }
+];
+
+// Traffic Control Directory
+export const TRAFFIC_DIRECTORY = [
+  {
+    id: 'traffic-itms-gkp',
+    name: 'Inspector R. Verma',
+    roleKey: 'traffic',
+    station: 'Gorakhpur ITMS City Traffic Control HQ',
+    status: 'Active Signal Deck',
+    statusColor: 'emerald',
+    badge: 'GREEN WAVE CONTROLLER',
+    avatar: '🚦',
+    phoneExt: 'Channel 1'
+  }
+];
+
 class EmergencyCallService {
   constructor() {
     this.peer = null;
@@ -16,6 +136,8 @@ class EmergencyCallService {
     this.callState = 'idle'; // 'idle' | 'outgoing' | 'incoming' | 'connected'
     this.incomingCallData = null;
     this.activeCallTarget = null;
+    this.activeCallTargetName = null;
+    this.activeCallerName = null;
     this.callType = 'video'; // 'video' | 'voice'
     this.isMuted = false;
     this.isVideoOff = false;
@@ -57,7 +179,7 @@ class EmergencyCallService {
 
   // Initialize service for currently logged-in user
   init(role) {
-    this.myRole = role || 'driver';
+    this.myRole = (role || 'driver').toLowerCase();
     this.myPeerId = this.getPeerIdForRole(this.myRole);
 
     if (this.peer) {
@@ -87,7 +209,9 @@ class EmergencyCallService {
 
         this._triggerIncomingCall({
           callerRole,
-          callerName: call.metadata?.callerName || (callerRole === 'driver' ? 'Ambulance MEDIC-12' : 'Doctor AIIMS ER'),
+          callerName: call.metadata?.callerName || (callerRole === 'driver' ? 'Ambulance MEDIC-12' : callerRole === 'patient' ? 'Citizen Patient' : 'AIIMS Doctor'),
+          targetName: call.metadata?.targetName || 'Emergency Desk',
+          department: call.metadata?.department,
           callType,
           callId: call.peer
         });
@@ -106,7 +230,6 @@ class EmergencyCallService {
       });
 
       this.peer.on('error', (err) => {
-        // Peer ID might already be registered in another tab; fallback to signaling channel
         console.warn('PeerJS notice:', err.type);
       });
     } catch (e) {
@@ -151,6 +274,9 @@ class EmergencyCallService {
       this._triggerIncomingCall({
         callerRole: msg.callerRole,
         callerName: msg.callerName,
+        targetRole: msg.targetRole,
+        targetName: msg.targetName,
+        department: msg.department,
         callType: msg.callType || 'video',
         callId: msg.callId
       });
@@ -201,7 +327,13 @@ class EmergencyCallService {
     const ctx = canvas.getContext('2d');
     let frame = 0;
 
-    const roleTitle = this.myRole === 'driver' ? 'AMBULANCE MEDIC-12' : this.myRole === 'hospital' ? 'AIIMS ER TRAUMA' : 'ITMS TRAFFIC CONTROL';
+    const roleTitle = this.myRole === 'driver' 
+      ? 'AMBULANCE MEDIC-12' 
+      : this.myRole === 'hospital' 
+        ? 'AIIMS ER TRAUMA' 
+        : this.myRole === 'patient' 
+          ? 'CITIZEN PATIENT SOS' 
+          : 'ITMS TRAFFIC CONTROL';
 
     const draw = () => {
       frame++;
@@ -284,10 +416,28 @@ class EmergencyCallService {
     return canvasStream;
   }
 
-  // Initiate an emergency call from current user to a target role (e.g. driver -> hospital or traffic)
-  async makeCall(targetRole, callType = 'video', callerName = 'Ambulance Medic-12') {
+  // Initiate an emergency call to a specific doctor or ambulance
+  async makeCall(targetRoleOrOptions, maybeCallType = 'video', maybeCallerName = null, maybeTargetName = null, maybeDept = null) {
+    let targetRole, callType, callerName, targetName, department;
+
+    if (typeof targetRoleOrOptions === 'object' && targetRoleOrOptions !== null) {
+      targetRole = targetRoleOrOptions.targetRole || 'hospital';
+      callType = targetRoleOrOptions.callType || 'video';
+      callerName = targetRoleOrOptions.callerName || (this.myRole === 'driver' ? 'Ambulance MEDIC-12' : this.myRole === 'patient' ? 'Citizen Patient' : 'AIIMS Doctor');
+      targetName = targetRoleOrOptions.targetName || 'Emergency Desk';
+      department = targetRoleOrOptions.department || 'Trauma Center';
+    } else {
+      targetRole = targetRoleOrOptions || 'hospital';
+      callType = maybeCallType || 'video';
+      callerName = maybeCallerName || (this.myRole === 'driver' ? 'Ambulance MEDIC-12' : this.myRole === 'hospital' ? 'Dr. Sharma (AIIMS)' : this.myRole === 'patient' ? 'Citizen Patient' : 'ITMS Traffic');
+      targetName = maybeTargetName || (targetRole === 'hospital' ? 'Dr. Sharma (Cardiology Head)' : targetRole === 'driver' ? 'Ambulance MEDIC-12' : 'ITMS Traffic Control');
+      department = maybeDept || 'Emergency Operations';
+    }
+
     this.callState = 'outgoing';
     this.activeCallTarget = targetRole;
+    this.activeCallTargetName = targetName;
+    this.activeCallerName = callerName;
     this.callType = callType;
     this._notify('stateChange', this.callState);
 
@@ -299,6 +449,8 @@ class EmergencyCallService {
       callerRole: this.myRole,
       callerName: callerName,
       targetRole: targetRole,
+      targetName: targetName,
+      department: department,
       callType: callType,
       callId: this.myPeerId
     });
@@ -311,6 +463,8 @@ class EmergencyCallService {
           metadata: {
             callerRole: this.myRole,
             callerName: callerName,
+            targetName: targetName,
+            department: department,
             callType: callType
           }
         });
@@ -342,6 +496,7 @@ class EmergencyCallService {
     const callerRole = this.incomingCallData.callerRole;
     const callType = this.incomingCallData.callType || 'video';
     this.activeCallTarget = callerRole;
+    this.activeCallTargetName = this.incomingCallData.callerName;
     this.callType = callType;
 
     const localStream = await this.getLocalStream(callType === 'video');
@@ -408,6 +563,8 @@ class EmergencyCallService {
     this.remoteStream = null;
     this.incomingCallData = null;
     this.activeCallTarget = null;
+    this.activeCallTargetName = null;
+    this.activeCallerName = null;
     this.callState = 'idle';
     this.isMuted = false;
     this.isVideoOff = false;

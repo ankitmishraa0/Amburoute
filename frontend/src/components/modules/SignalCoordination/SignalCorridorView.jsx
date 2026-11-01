@@ -16,6 +16,7 @@ import {
 import { overrideSignal } from '@/services/api';
 import { soundFx } from '@/services/sound';
 import { callService } from '@/services/callService';
+import CallSelectorModal from '@/components/common/CallSelectorModal';
 
 export default function SignalCorridorView({ 
   signals = [], 
@@ -25,6 +26,7 @@ export default function SignalCorridorView({
   onNavigateTab 
 }) {
   const [activeToast, setActiveToast] = useState(null);
+  const [showCallModal, setShowCallModal] = useState(false);
 
   const triggerToast = (msg) => {
     setActiveToast(msg);
@@ -211,24 +213,12 @@ export default function SignalCorridorView({
               type="button"
               onClick={() => {
                 try { soundFx?.playClick?.(); } catch (e) {}
-                callService.makeCall('driver', 'voice', 'ITMS Traffic Control');
+                setShowCallModal(true);
               }}
-              className="flex-1 sm:flex-none px-3.5 py-2 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white text-xs font-bold rounded-xl shadow-xs hover:shadow-md transition-all flex items-center justify-center space-x-1.5 cursor-pointer"
+              className="flex-1 sm:flex-none px-4 py-2.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white text-xs font-bold rounded-xl shadow-xs hover:shadow-md transition-all flex items-center justify-center space-x-1.5 cursor-pointer"
             >
-              <PhoneCall className="w-3.5 h-3.5" />
-              <span>Call Ambulance Driver</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => {
-                try { soundFx?.playClick?.(); } catch (e) {}
-                callService.makeCall('hospital', 'voice', 'ITMS Traffic Control');
-              }}
-              className="flex-1 sm:flex-none px-3.5 py-2 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-600 text-slate-800 dark:text-slate-100 hover:bg-slate-50 text-xs font-bold rounded-xl transition-all flex items-center justify-center space-x-1.5 cursor-pointer"
-            >
-              <PhoneCall className="w-3.5 h-3.5 text-blue-500" />
-              <span>Call Hospital ER</span>
+              <PhoneCall className="w-4 h-4" />
+              <span>Select Unit & Call 📞</span>
             </button>
           </div>
         </div>
@@ -326,6 +316,14 @@ export default function SignalCorridorView({
           })}
         </div>
       </div>
+
+      {/* Real-Time Call Selector Modal */}
+      <CallSelectorModal
+        isOpen={showCallModal}
+        onClose={() => setShowCallModal(false)}
+        callerRole="traffic"
+        callerName="Inspector R. Verma (Traffic ITMS)"
+      />
 
     </div>
   );

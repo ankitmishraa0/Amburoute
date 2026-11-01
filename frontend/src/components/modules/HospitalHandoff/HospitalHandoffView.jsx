@@ -19,6 +19,7 @@ import {
 import { fetchHandoffSummary } from '@/services/api';
 import { soundFx } from '@/services/sound';
 import { callService } from '@/services/callService';
+import CallSelectorModal from '@/components/common/CallSelectorModal';
 
 // Clean simulated ECG trace
 function ECGMonitor({ heartRate = 120 }) {
@@ -359,117 +360,12 @@ export default function HospitalHandoffView({
       </div>
 
       {/* Real-time Emergency Audio & Video Communication Modal */}
-      {showCallModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            
-            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <div className="flex items-center space-x-2">
-                <div className="w-9 h-9 rounded-xl bg-blue-100 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
-                  📞
-                </div>
-                <div>
-                  <h3 className="font-black text-base text-slate-900 dark:text-white">
-                    Emergency Trauma Desk Comms
-                  </h3>
-                  <p className="text-[11px] text-slate-500">
-                    Live WebRTC Audio & Video across devices
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowCallModal(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3 pt-1">
-              {/* Option 1: Live Video Call Ambulance */}
-              <button
-                type="button"
-                onClick={() => {
-                  setShowCallModal(false);
-                  try { soundFx?.playClick?.(); } catch (e) {}
-                  callService.makeCall('driver', 'video', 'AIIMS ER Trauma Doctor');
-                }}
-                className="w-full p-4 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md hover:shadow-lg transition-all flex items-center justify-between group cursor-pointer text-left"
-              >
-                <div className="flex items-center space-x-3.5">
-                  <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-                    <Video className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-black flex items-center gap-1.5">
-                      <span>Video Call Ambulance Medic</span>
-                      <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded font-mono uppercase">HD Video</span>
-                    </div>
-                    <div className="text-xs text-blue-100">
-                      Ambulance MEDIC-12 • Inspect patient & vitals live
-                    </div>
-                  </div>
-                </div>
-                <span className="text-xl">➔</span>
-              </button>
-
-              {/* Option 2: Voice Call Ambulance */}
-              <button
-                type="button"
-                onClick={() => {
-                  setShowCallModal(false);
-                  try { soundFx?.playClick?.(); } catch (e) {}
-                  callService.makeCall('driver', 'voice', 'AIIMS ER Trauma Doctor');
-                }}
-                className="w-full p-3.5 rounded-2xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white shadow-sm hover:shadow-md transition-all flex items-center justify-between group cursor-pointer text-left"
-              >
-                <div className="flex items-center space-x-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                    <PhoneCall className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-bold">Voice Intercom to Driver</div>
-                    <div className="text-xs text-slate-500">
-                      Two-way emergency audio line to vehicle
-                    </div>
-                  </div>
-                </div>
-                <span className="text-slate-400 group-hover:text-slate-700 dark:group-hover:text-white text-lg">➔</span>
-              </button>
-
-              {/* Option 3: Call Traffic Police */}
-              <button
-                type="button"
-                onClick={() => {
-                  setShowCallModal(false);
-                  try { soundFx?.playClick?.(); } catch (e) {}
-                  callService.makeCall('traffic', 'voice', 'AIIMS ER Trauma Doctor');
-                }}
-                className="w-full p-3.5 rounded-2xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white shadow-sm hover:shadow-md transition-all flex items-center justify-between group cursor-pointer text-left"
-              >
-                <div className="flex items-center space-x-3.5">
-                  <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                    <Radio className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-bold">Radio Traffic Police Unit</div>
-                    <div className="text-xs text-slate-500">
-                      ITMS Traffic Control • Coordinate Green Wave
-                    </div>
-                  </div>
-                </div>
-                <span className="text-slate-400 group-hover:text-slate-700 dark:group-hover:text-white text-lg">➔</span>
-              </button>
-            </div>
-
-            <div className="text-[11px] text-center text-slate-400 pt-1">
-              Connects directly to Ambulance dashboard or Traffic police device!
-            </div>
-
-          </div>
-        </div>
-      )}
+      <CallSelectorModal
+        isOpen={showCallModal}
+        onClose={() => setShowCallModal(false)}
+        callerRole="hospital"
+        callerName="Dr. Rajesh Sharma (AIIMS ER Desk)"
+      />
 
     </div>
   );

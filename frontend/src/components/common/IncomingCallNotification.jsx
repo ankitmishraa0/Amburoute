@@ -71,15 +71,32 @@ export default function IncomingCallNotification() {
         </div>
 
         {/* Call Info */}
-        <div className="space-y-1">
-          <span className="text-[11px] font-black uppercase tracking-wider text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-950/60 px-3 py-1 rounded-full border border-red-200 dark:border-red-900 inline-block animate-pulse">
-            🚨 INCOMING EMERGENCY CALL
-          </span>
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-center gap-1.5 flex-wrap">
+            <span className="text-[11px] font-black uppercase tracking-wider text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-950/60 px-3 py-1 rounded-full border border-red-200 dark:border-red-900 inline-block animate-pulse">
+              🚨 INCOMING EMERGENCY CALL
+            </span>
+            <span className="text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-full uppercase">
+              {incomingCall.callType === 'video' ? '📹 HD Video Call' : '📞 Voice Intercom'}
+            </span>
+          </div>
+
           <h3 className="text-xl font-black text-slate-900 dark:text-white pt-1">
             {incomingCall.callerName || (isAmbulance ? 'Ambulance MEDIC-12' : isTraffic ? 'Traffic Control ITMS' : 'Doctor AIIMS')}
           </h3>
+
+          {incomingCall.targetName && (
+            <div className="text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 p-2 rounded-xl border border-blue-200 dark:border-blue-900/60 inline-block">
+              🎯 Calling: <span className="underline">{incomingCall.targetName}</span>
+            </div>
+          )}
+
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            {isAmbulance ? 'Ambulance Paramedic is calling with live patient telemedicine feed' : 'Priority Emergency Intercom Request'}
+            {isAmbulance 
+              ? 'Ambulance Paramedic is transmitting live patient telemedicine stream' 
+              : incomingCall.callerRole === 'patient'
+                ? 'Citizen / Patient is requesting urgent emergency assistance'
+                : 'Hospital Trauma Desk is calling with pre-arrival medical orders'}
           </p>
         </div>
 

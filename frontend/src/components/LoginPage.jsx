@@ -429,6 +429,32 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
             </p>
           </div>
 
+          {/* Quick Citizen SOS Ambulance Booking Shortcut */}
+          <button
+            type="button"
+            onClick={() => {
+              const patientRole = OPERATOR_ROLES.find(r => r.id === 'patient') || OPERATOR_ROLES[0];
+              onLogin({
+                ...patientRole,
+                username: 'patient',
+                name: 'Citizen Patient (Emergency SOS)',
+                assignedTab: 'patient_portal'
+              });
+            }}
+            className="w-full p-3 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-700 hover:to-rose-800 text-white font-black text-xs shadow-md hover:shadow-lg transition-all flex items-center justify-between cursor-pointer group"
+          >
+            <div className="flex items-center space-x-2.5">
+              <span className="text-xl animate-bounce">🚑</span>
+              <div className="text-left">
+                <div className="leading-tight text-white font-black">Need an Ambulance Right Now?</div>
+                <div className="text-[10px] text-red-100 font-normal">1-Tap Citizen Booking (Zomato / Rapido Style)</div>
+              </div>
+            </div>
+            <span className="text-xs bg-white/20 px-2.5 py-1 rounded-full uppercase tracking-wider group-hover:translate-x-0.5 transition-transform font-bold">
+              Book Now ➔
+            </span>
+          </button>
+
           {/* Department / Station Segmented Control */}
           <div className="space-y-2">
             <label className="block text-[11px] font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
@@ -436,7 +462,7 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
             </label>
 
             <div 
-              className="grid grid-cols-2 sm:grid-cols-4 gap-1 p-1 bg-slate-100 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-lg" 
+              className="grid grid-cols-2 sm:grid-cols-5 gap-1 p-1 bg-slate-100 dark:bg-slate-950/80 border border-slate-200 dark:border-slate-800 rounded-lg" 
               role="tablist" 
               aria-label="Department Station"
             >

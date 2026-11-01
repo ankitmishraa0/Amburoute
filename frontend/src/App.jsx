@@ -16,6 +16,7 @@ import SignalCorridorView from './components/modules/SignalCoordination/SignalCo
 import HospitalMatrixView from './components/modules/HospitalMatrix/HospitalMatrixView';
 import AIRiskView from './components/modules/AIRiskAssessment/AIRiskView';
 import HospitalHandoffView from './components/modules/HospitalHandoff/HospitalHandoffView';
+import PatientPortalView from './components/modules/PatientPortal/PatientPortalView';
 
 // Services
 import { TelemetryWebSocket } from './services/websocket';
@@ -168,6 +169,7 @@ export default function App() {
       driver: ['command_map', 'hospitals'],
       traffic: ['signals'],
       hospital: ['handoff', 'triage', 'hospitals'],
+      patient: ['patient_portal', 'hospitals'],
       admin: ['command_map', 'signals', 'hospitals', 'triage', 'handoff', 'admin_panel']
     };
 
@@ -175,6 +177,7 @@ export default function App() {
       driver: 'command_map',
       traffic: 'signals',
       hospital: 'handoff',
+      patient: 'patient_portal',
       admin: 'admin_panel'
     };
 
@@ -211,6 +214,7 @@ export default function App() {
       driver: 'command_map',
       traffic: 'signals',
       hospital: 'handoff',
+      patient: 'patient_portal',
       admin: 'admin_panel'
     };
 
@@ -522,6 +526,15 @@ export default function App() {
             hospitals={hospitals}
             setHospitals={setHospitals}
             onSelectScenario={handleSelectScenario}
+          />
+        )}
+
+        {/* TAB 7: CITIZEN / PATIENT EMERGENCY PORTAL (ZOMATO / RAPIDO STYLE) */}
+        {activeTab === 'patient_portal' && (
+          <PatientPortalView
+            telemetry={telemetry}
+            hospitals={hospitals}
+            onNavigateTab={setActiveTab}
           />
         )}
 

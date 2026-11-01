@@ -1,4 +1,4 @@
-import { Navigation, Building2, Signal, Shield } from 'lucide-react';
+import { Navigation, Building2, Signal, Shield, User } from 'lucide-react';
 
 export const OPERATOR_ROLES = [
   {
@@ -36,6 +36,18 @@ export const OPERATOR_ROLES = [
     description: 'Corridor signal preemption, intersection clearance monitoring, and manual cycle overrides.',
     demoUsername: 'traffic_gkp',
     demoPassword: 'traffic123'
+  },
+  {
+    id: 'patient',
+    label: 'Citizen / Patient (SOS)',
+    shortLabel: 'Patient (SOS)',
+    badge: 'CITIZEN RIDER',
+    icon: User,
+    assignedTab: 'patient_portal',
+    department: 'Patient Emergency Booking',
+    description: 'Zomato/Rapido-style 1-tap ambulance booking, live nearby fleet radar, and hospital ICU bed availability.',
+    demoUsername: 'patient',
+    demoPassword: '123'
   },
   {
     id: 'admin',

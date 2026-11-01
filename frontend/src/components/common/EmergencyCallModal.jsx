@@ -111,11 +111,15 @@ export default function EmergencyCallModal({ telemetry }) {
     spo2: 88
   };
 
-  const targetName = callTarget === 'hospital' 
-    ? 'AIIMS ER Trauma Desk' 
-    : callTarget === 'traffic' 
-      ? 'ITMS Traffic Police Control' 
-      : 'Ambulance MEDIC-12';
+  const targetName = callService.activeCallTargetName || (
+    callTarget === 'hospital' 
+      ? 'Dr. Rajesh Sharma (AIIMS ER Desk)' 
+      : callTarget === 'traffic' 
+        ? 'ITMS Traffic Police Control' 
+        : callTarget === 'patient'
+          ? 'Citizen Patient (Emergency SOS)'
+          : 'Ambulance MEDIC-12'
+  );
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/80 backdrop-blur-md animate-fade-in">
