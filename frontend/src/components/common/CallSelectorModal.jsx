@@ -69,6 +69,7 @@ export default function CallSelectorModal({
 
     callService.makeCall({
       targetRole,
+      callerRole,
       callType,
       callerName: actualCallerName,
       targetName,

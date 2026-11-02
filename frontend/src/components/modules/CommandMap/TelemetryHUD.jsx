@@ -110,6 +110,7 @@ export default function TelemetryHUD({
                 try { soundFx?.playClick?.(); } catch (e) {}
                 callService.makeCall({
                   targetRole: 'patient',
+                  callerRole: 'driver',
                   callType: 'voice',
                   callerName: 'Ambulance MEDIC-12 (Driver Rajesh)',
                   targetName: 'Citizen Patient',

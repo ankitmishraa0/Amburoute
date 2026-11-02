@@ -557,6 +557,7 @@ export default function App() {
                         try { soundFx?.playClick?.(); } catch (e) {}
                         callService.makeCall({
                           targetRole: 'patient',
+                          callerRole: 'driver',
                           callType: 'voice',
                           callerName: `Ambulance MEDIC-12 (${currentUser?.name || 'Driver'})`,
                           targetName: driverActiveMission.patientName || 'Citizen Patient',

@@ -63,6 +63,11 @@ export default function PatientPortalView({
     { id: 'general', label: 'Unconscious / Fainting', emoji: '🩺', desc: 'General emergency' },
   ];
 
+  // Ensure patient call role is initialized immediately on mount
+  useEffect(() => {
+    callService.init('patient');
+  }, []);
+
   // Subscribe to real-time online drivers presence
   useEffect(() => {
     const unsubDrivers = rideService.on('driversChanged', (drivers) => {
@@ -356,6 +361,7 @@ export default function PatientPortalView({
                 try { soundFx?.playClick?.(); } catch (e) {}
                 callService.makeCall({
                   targetRole: 'driver',
+                  callerRole: 'patient',
                   callType: 'voice',
                   callerName: 'Citizen Patient (Self)',
                   targetName: activeRide?.ambulanceCallsign || 'Ambulance MEDIC-12',
@@ -436,6 +442,7 @@ export default function PatientPortalView({
                   try { soundFx?.playClick?.(); } catch (e) {}
                   callService.makeCall({
                     targetRole: 'driver',
+                    callerRole: 'patient',
                     callType: 'voice',
                     callerName: 'Citizen Patient (Self)',
                     targetName: activeRide?.driverName || 'Driver Rajesh Sharma',
@@ -619,6 +626,7 @@ export default function PatientPortalView({
                               try { soundFx?.playClick?.(); } catch (e) {}
                               callService.makeCall({
                                 targetRole: 'driver',
+                                callerRole: 'patient',
                                 callType: 'voice',
                                 callerName: 'Citizen Patient (Self)',
                                 targetName: driver.callsign || driver.name || 'Ambulance Driver',
