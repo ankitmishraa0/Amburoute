@@ -41,7 +41,7 @@ export default function PatientPortalView({
   const [onlineDrivers, setOnlineDrivers] = useState(() => rideService.getOnlineDrivers());
   const [selectedDriverId, setSelectedDriverId] = useState(null);
 
-  // Active Ride Booking State (Rapido / Uber tracking)
+  // Active Ride Booking State (Emergency live tracking)
   // 'idle' | 'requesting' | 'en_route' | 'arrived'
   const [rideState, setRideState] = useState('idle');
   const [activeRide, setActiveRide] = useState(null);
@@ -183,7 +183,7 @@ export default function PatientPortalView({
         .bindPopup(`<b>Your Pickup Point</b><br/>${pickupAddress}`)
         .openPopup();
 
-      // Moving Ambulance Marker (Rapido car icon)
+      // Moving Ambulance Marker (Ambulance vehicle icon)
       const ambulanceIcon = L.divIcon({
         className: 'custom-moving-ambulance-marker',
         html: `
@@ -298,21 +298,35 @@ export default function PatientPortalView({
           </div>
         </div>
 
-        {/* Real-Time Online Driver Badge */}
-        <div className="flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-xl border shrink-0 self-start sm:self-auto bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-          </span>
-          <span>
-            {onlineDrivers.length > 0 
-              ? `${onlineDrivers.length} Ambulance Driver Online Now` 
-              : '0 Drivers Online Currently'}
-          </span>
+        {/* Top Actions: Emergency Call & Online Driver Badge */}
+        <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto flex-wrap">
+          <button
+            type="button"
+            onClick={() => {
+              try { soundFx?.playClick?.(); } catch (e) {}
+              setShowCallModal(true);
+            }}
+            className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 text-white font-black text-xs shadow-sm flex items-center gap-1.5 cursor-pointer ring-1 ring-blue-400/30"
+          >
+            <PhoneCall className="w-3.5 h-3.5" />
+            <span>Emergency Directory 📞</span>
+          </button>
+
+          <div className="flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-xl border bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span>
+              {onlineDrivers.length > 0 
+                ? `${onlineDrivers.length} Driver Online` 
+                : '0 Drivers Online'}
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* ==================== STATE 1: WAITING FOR DRIVER TO ACCEPT (RAPIDO RADAR) ==================== */}
+      {/* ==================== STATE 1: WAITING FOR DRIVER TO ACCEPT (Emergency Radar) ==================== */}
       {rideState === 'requesting' && (
         <div className="p-8 bg-white dark:bg-slate-900 border-2 border-red-500 rounded-3xl shadow-xl text-center space-y-4 animate-fade-in">
           <div className="relative w-24 h-24 mx-auto flex items-center justify-center">
@@ -335,11 +349,29 @@ export default function PatientPortalView({
             </p>
           </div>
 
-          <div className="pt-2">
+          <div className="pt-2 flex items-center justify-center gap-3 flex-wrap">
+            <button
+              type="button"
+              onClick={() => {
+                try { soundFx?.playClick?.(); } catch (e) {}
+                callService.makeCall({
+                  targetRole: 'driver',
+                  callType: 'voice',
+                  callerName: 'Citizen Patient (Self)',
+                  targetName: activeRide?.ambulanceCallsign || 'Ambulance MEDIC-12',
+                  department: 'Emergency Cab Intercom'
+                });
+              }}
+              className="py-2.5 px-5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 text-white font-black text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer ring-2 ring-emerald-400/40"
+            >
+              <PhoneCall className="w-4 h-4 fill-current" />
+              <span>Call Ambulance Desk 📞</span>
+            </button>
+
             <button
               type="button"
               onClick={handleCancelRequest}
-              className="py-2.5 px-6 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-red-100 dark:hover:bg-red-950/40 text-slate-700 dark:text-slate-300 hover:text-red-600 text-xs font-bold transition-all cursor-pointer"
+              className="py-2.5 px-5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-red-100 dark:hover:bg-red-950/40 text-slate-700 dark:text-slate-300 hover:text-red-600 text-xs font-bold transition-all cursor-pointer"
             >
               Cancel Request
             </button>
@@ -347,7 +379,7 @@ export default function PatientPortalView({
         </div>
       )}
 
-      {/* ==================== STATE 2: LIVE MOVING MAP TRACKING (RAPIDO STYLE) ==================== */}
+      {/* ==================== STATE 2: LIVE MOVING MAP TRACKING (Emergency Dispatch) ==================== */}
       {rideState === 'en_route' && (
         <div className="space-y-4 animate-fade-in">
           
@@ -381,7 +413,7 @@ export default function PatientPortalView({
             </div>
           </div>
 
-          {/* INTERACTIVE RAPIDO-STYLE MOVING MAP */}
+          {/* INTERACTIVE Emergency MOVING MAP */}
           <div className="relative w-full h-[360px] rounded-3xl overflow-hidden border-2 border-slate-200 dark:border-slate-800 shadow-md">
             <div ref={mapContainerRef} className="w-full h-full z-10" />
 
@@ -389,7 +421,7 @@ export default function PatientPortalView({
             <div className="absolute top-4 left-4 z-20 bg-slate-900/90 backdrop-blur-md text-white p-3 rounded-2xl border border-slate-700 text-xs shadow-xl space-y-1 max-w-xs">
               <div className="flex items-center gap-1.5 text-emerald-400 font-bold text-[11px]">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                <span>RAPIDO LIVE VEHICLE GPS</span>
+                <span>LIVE AMBULANCE VEHICLE GPS</span>
               </div>
               <div className="font-bold text-white text-xs">
                 Ambulance is moving towards your pickup point
@@ -445,11 +477,11 @@ export default function PatientPortalView({
         </div>
       )}
 
-      {/* ==================== STATE 3: NORMAL BOOKING LIST (ZOMATO / RAPIDO STYLE) ==================== */}
+      {/* ==================== STATE 3: NORMAL BOOKING LIST (Emergency Dispatch) ==================== */}
       {rideState === 'idle' && (
         <div className="space-y-5 animate-fade-in">
           
-          {/* STEP 1: EMERGENCY SYMPTOM SELECTOR (ZOMATO CHIPS) */}
+          {/* STEP 1: EMERGENCY SYMPTOM SELECTOR (Emergency Symptoms) */}
           <div className="space-y-2.5">
             <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 px-1">
               Step 1: What is the Medical Emergency? (Tap to Select)
@@ -573,21 +605,42 @@ export default function PatientPortalView({
                         </div>
                       </div>
 
-                      {/* Direct Book Button on each currently online ambulance card */}
+                      {/* Direct Book & Call Buttons on each currently online ambulance card */}
                       <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800 gap-2">
-                        <div className="text-right">
+                        <div className="text-right hidden sm:block">
                           <span className="text-[10px] font-bold text-slate-400 uppercase block">Emergency Fare</span>
                           <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">FREE (Govt 108)</span>
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={() => handleRequestRide(driver)}
-                          className="px-4 py-2.5 rounded-xl text-xs font-black bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center gap-1.5 ring-2 ring-red-400/30"
-                        >
-                          <Navigation className="w-3.5 h-3.5" />
-                          <span>Book & Dispatch Ambulance ➔</span>
-                        </button>
+                        <div className="flex items-center gap-2 w-full sm:w-auto">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              try { soundFx?.playClick?.(); } catch (e) {}
+                              callService.makeCall({
+                                targetRole: 'driver',
+                                callType: 'voice',
+                                callerName: 'Citizen Patient (Self)',
+                                targetName: driver.callsign || driver.name || 'Ambulance Driver',
+                                department: 'Ambulance Direct Line'
+                              });
+                            }}
+                            className="px-3.5 py-2.5 rounded-xl text-xs font-bold bg-slate-100 hover:bg-emerald-50 dark:bg-slate-800 dark:hover:bg-emerald-950/50 text-slate-700 dark:text-slate-200 hover:text-emerald-600 dark:hover:text-emerald-400 border border-slate-300 dark:border-slate-700 transition-all cursor-pointer flex items-center gap-1.5"
+                            title="Direct voice call with ambulance driver"
+                          >
+                            <PhoneCall className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                            <span>Call Driver 📞</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRequestRide(driver)}
+                            className="px-4 py-2.5 rounded-xl text-xs font-black bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center gap-1.5 ring-2 ring-red-400/30"
+                          >
+                            <Navigation className="w-3.5 h-3.5" />
+                            <span>Book Ambulance ➔</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
                   );
@@ -596,11 +649,11 @@ export default function PatientPortalView({
             )}
           </div>
 
-          {/* STEP 3: DESTINATION HOSPITAL SELECTION (ZOMATO RESTAURANT CARDS) */}
+          {/* STEP 3: DESTINATION HOSPITAL SELECTION (Hospital ER Bays) */}
           <div className="space-y-2.5">
             <div className="flex items-center justify-between px-1">
               <label className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                Step 3: Select Destination Hospital (Zomato Style)
+                Step 3: Select Destination Hospital 
               </label>
               <span className="text-[11px] font-mono text-slate-400">
                 Real-Time ICU Bed Sync
@@ -667,9 +720,11 @@ export default function PatientPortalView({
         isOpen={showCallModal}
         onClose={() => setShowCallModal(false)}
         callerRole="patient"
+        initialTab="ambulances"
         callerName="Citizen Patient (Emergency SOS)"
       />
 
     </div>
   );
 }
+

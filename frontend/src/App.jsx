@@ -119,6 +119,11 @@ export default function App() {
   const [currentRole, setCurrentRole] = useState(PORTAL_ROLES[0]);
   const [currentUser, setCurrentUser] = useState(null); // Full security: Login required
   const [driverActiveMission, setDriverActiveMission] = useState(null); // Standby vs Active Mission
+
+  // Clean Normalized Role Helpers
+  const userRoleKey = (currentUser?.role || currentUser?.id || 'driver').toLowerCase();
+  const isDriver = userRoleKey.includes('driver');
+  const isPatient = userRoleKey.includes('patient');
   const [theme, setTheme] = useState(() => {
     const saved = localStorage.getItem('amburoute_theme');
     if (saved) return saved;
@@ -191,17 +196,38 @@ export default function App() {
     }
   }, [currentUser, activeTab]);
 
-  // Initialize Cross-Device WebRTC / Signal Call Service for logged-in role
+  // Initialize Cross-Device WebRTC / Signal Call Service dynamically based on active tab and login
   useEffect(() => {
-    if (currentUser) {
-      const roleKey = currentUser?.role || currentUser?.id || 'driver';
-      callService.init(roleKey);
+    const tabToRole = {
+      command_map: 'driver',
+      handoff: 'hospital',
+      signals: 'traffic',
+      patient_portal: 'patient',
+      hospitals: 'driver',
+      risk: 'hospital'
+    };
+
+    let effectiveRole = 'driver';
+    if (activeTab === 'patient_portal') {
+      effectiveRole = 'patient';
+    } else if (activeTab === 'handoff') {
+      effectiveRole = 'hospital';
+    } else if (activeTab === 'signals') {
+      effectiveRole = 'traffic';
+    } else if (currentUser?.role) {
+      effectiveRole = currentUser.role;
+    } else if (currentUser?.id) {
+      effectiveRole = currentUser.id;
+    } else {
+      effectiveRole = tabToRole[activeTab] || 'driver';
     }
-  }, [currentUser]);
+
+    callService.init(effectiveRole);
+  }, [currentUser, activeTab]);
 
   // Manage Driver Online Presence for Real-Time Fleet Visibility
   useEffect(() => {
-    if (currentUser?.role === 'driver') {
+    if (isDriver && currentUser) {
       rideService.startDriverPresence(currentUser);
     } else {
       rideService.stopDriverPresence();
@@ -210,7 +236,7 @@ export default function App() {
     return () => {
       rideService.stopDriverPresence();
     };
-  }, [currentUser]);
+  }, [currentUser, isDriver]);
 
   // When driver accepts an incoming patient ride request
   const handleRideAcceptedByDriver = (acceptedRide) => {
@@ -490,7 +516,7 @@ export default function App() {
 
         {/* TAB 1: COMMAND & GIS MAP (DRIVER VIEW) */}
         {activeTab === 'command_map' && (
-          currentUser?.role === 'driver' && !driverActiveMission ? (
+          isDriver && !driverActiveMission ? (
             <DriverStandbyView
               currentUser={currentUser}
               onSimulateIncomingRequest={() => {}}
@@ -499,7 +525,7 @@ export default function App() {
           ) : (
             <div className="space-y-4">
               {/* Active Emergency Mission Banner (when Driver accepted ride) */}
-              {currentUser?.role === 'driver' && driverActiveMission && (
+              {isDriver && driverActiveMission && (
                 <div className="bg-gradient-to-r from-red-950 via-slate-900 to-red-950 border-2 border-red-500 rounded-3xl p-4 sm:p-5 shadow-2xl relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-4 animate-fade-in text-white ring-4 ring-red-500/20">
                   <div className="flex items-center space-x-4">
                     <div className="w-12 h-12 rounded-2xl bg-red-600/30 border border-red-500 flex items-center justify-center text-2xl shrink-0 animate-pulse">
@@ -597,6 +623,7 @@ export default function App() {
           <SignalCorridorView
             signals={telemetry?.signals || []}
             ambulance={telemetry?.ambulance}
+            telemetry={telemetry}
             setTelemetry={setTelemetry}
             onNavigateTab={setActiveTab}
             onSignalUpdated={() => {
@@ -646,7 +673,7 @@ export default function App() {
           />
         )}
 
-        {/* TAB 7: CITIZEN / PATIENT EMERGENCY PORTAL (ZOMATO / RAPIDO STYLE) */}
+        {/* TAB 7: CITIZEN / PATIENT EMERGENCY PORTAL (Emergency Dispatch) */}
         {activeTab === 'patient_portal' && (
           <PatientPortalView
             telemetry={telemetry}
@@ -682,3 +709,4 @@ export default function App() {
     </div>
   );
 }
+

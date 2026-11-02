@@ -249,7 +249,7 @@ def build_pdf(filename="AmbuRoute_Complete_Project_Report_Viva_Guide.pdf"):
          "AmbuRoute integrates the HTML5 Geolocation API (`navigator.geolocation`). When clicking 'My Device GPS', it reads latitude and longitude, centers the map, and dynamically generates realistic emergency trauma centers and bed vacancies around the user's actual location, making the simulation universally testable anywhere in the world."),
 
         ("Q8: Why is the UI designed in Red & White?",
-         "Red & White is the universally recognized color palette of international emergency medical services (Red Cross, 108 Emergency EMS, Swiss Medical, and modern consumer dispatch apps like Zomato). It provides immediate visual urgency, high contrast on street navigation maps, and clean clinical legibility."),
+         "Red & White is the universally recognized color palette of international emergency medical services (Red Cross, 108 Emergency EMS, Swiss Medical, and modern emergency dispatch apps). It provides immediate visual urgency, high contrast on street navigation maps, and clean clinical legibility."),
 
         ("Q9: What database would you recommend for commercial production deployment?",
          "For commercial deployment, PostgreSQL with PostGIS extension for spatial queries (finding nearest hospitals within a polygon in milliseconds), paired with Redis for sub-millisecond pub/sub WebSocket session state."),

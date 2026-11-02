@@ -364,6 +364,7 @@ export default function HospitalHandoffView({
         isOpen={showCallModal}
         onClose={() => setShowCallModal(false)}
         callerRole="hospital"
+        initialTab="ambulances"
         callerName="Dr. Rajesh Sharma (AIIMS ER Desk)"
       />
 

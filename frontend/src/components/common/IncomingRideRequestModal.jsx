@@ -97,7 +97,7 @@ export default function IncomingRideRequestModal({ onRideAccepted }) {
               <span className="relative inline-flex rounded-full h-4 w-4 bg-red-600"></span>
             </span>
             <span className="text-xs font-black uppercase tracking-wider text-red-600 dark:text-red-400">
-              🚨 NEW PATIENT RIDE REQUEST (RAPIDO STYLE)
+              🚨 NEW PATIENT RIDE REQUEST (Emergency Dispatch)
             </span>
           </div>
 
@@ -175,3 +175,4 @@ export default function IncomingRideRequestModal({ onRideAccepted }) {
     </div>
   );
 }
+

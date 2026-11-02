@@ -1,37 +1,136 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { 
   Signal, 
   CheckCircle2, 
   RefreshCw, 
   Sparkles,
-  Check,
   AlertCircle,
   Clock,
   Navigation,
   ArrowRight,
   PhoneCall,
   Radio,
-  Video
+  Video,
+  MapPin,
+  ShieldAlert,
+  Activity,
+  HeartPulse
 } from 'lucide-react';
 import { overrideSignal } from '@/services/api';
 import { soundFx } from '@/services/sound';
 import { callService } from '@/services/callService';
+import { rideService } from '@/services/rideService';
 import CallSelectorModal from '@/components/common/CallSelectorModal';
+
+// Custom Map Marker Icons for Leaflet
+const createAmbulanceIcon = (heading = 0, siren = true, speed = 58) => {
+  return L.divIcon({
+    className: 'custom-traffic-amb-marker',
+    html: `
+      <div style="position: relative; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;">
+        ${siren ? '<div style="position: absolute; inset: 0; border-radius: 50%; background: rgba(239, 68, 68, 0.4); animation: ping 1s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>' : ''}
+        <div style="position: relative; width: 34px; height: 34px; background: #DC2626; border: 2.5px solid #FFFFFF; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 10px rgba(0,0,0,0.4); z-index: 10;">
+          <span style="font-size: 18px; line-height: 1;">🚑</span>
+        </div>
+        <div style="position: absolute; -top: 14px; background: #0F172A; color: #FFFFFF; font-size: 9px; font-weight: 800; font-family: monospace; padding: 1px 4px; border-radius: 4px; border: 1px solid #DC2626; white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,0.3); z-index: 12;">
+          ${speed} km/h
+        </div>
+      </div>
+    `,
+    iconSize: [44, 44],
+    iconAnchor: [22, 22]
+  });
+};
+
+const createSignalMarkerIcon = (state, seq, name) => {
+  const isGreen = state === 'green_wave';
+  const isAmber = state === 'amber_prep';
+  const color = isGreen ? '#10B981' : isAmber ? '#F59E0B' : '#EF4444';
+  const label = isGreen ? '🟢 GREEN' : isAmber ? '🟡 AMBER' : '🔴 RED';
+
+  return L.divIcon({
+    className: 'custom-traffic-signal-marker',
+    html: `
+      <div style="display: flex; flex-direction: column; align-items: center; cursor: pointer;">
+        <div style="position: relative; width: 32px; height: 32px; background: #0F172A; border: 2.5px solid ${color}; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 8px rgba(0,0,0,0.5);">
+          <div style="width: 14px; height: 14px; border-radius: 50%; background: ${color}; ${isGreen ? 'box-shadow: 0 0 10px #10B981;' : ''}"></div>
+          <span style="position: absolute; font-size: 10px; font-weight: 900; color: #FFFFFF; font-family: monospace;">${seq}</span>
+        </div>
+        <div style="margin-top: 2px; background: rgba(15, 23, 42, 0.9); color: #F8FAFC; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 4px; border: 1px solid ${color}; white-space: nowrap; box-shadow: 0 2px 4px rgba(0,0,0,0.4);">
+          ${name} (${label})
+        </div>
+      </div>
+    `,
+    iconSize: [40, 50],
+    iconAnchor: [20, 20]
+  });
+};
 
 export default function SignalCorridorView({ 
   signals = [], 
   ambulance, 
+  telemetry,
   setTelemetry, 
   onSignalUpdated,
   onNavigateTab 
 }) {
   const [activeToast, setActiveToast] = useState(null);
   const [showCallModal, setShowCallModal] = useState(false);
+  const [initialCallTab, setInitialCallTab] = useState('ambulances');
+  const [activePatientMission, setActivePatientMission] = useState(null);
 
+  // Leaflet Map Refs
+  const mapContainerRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const ambMarkerRef = useRef(null);
+  const signalMarkersRef = useRef([]);
+  const routePolylineRef = useRef(null);
+
+  // Trigger Toast Notification
   const triggerToast = (msg) => {
     setActiveToast(msg);
     setTimeout(() => setActiveToast(null), 3500);
   };
+
+  // Sync Active Patient Ride (From RideService / LocalStorage / Telemetry)
+  useEffect(() => {
+    const checkActiveRide = () => {
+      const liveRide = rideService.getActiveRide() || telemetry?.ambulance?.active_patient_ride;
+      if (liveRide) {
+        setActivePatientMission(liveRide);
+      } else {
+        // Fallback default mission from telemetry incident if available
+        setActivePatientMission({
+          patientName: telemetry?.incident?.patient_name || 'Ramesh Gupta (58M)',
+          emergencyType: telemetry?.incident?.title || 'Severe Chest Pain (Cardiac STEMI)',
+          pickupAddress: telemetry?.incident?.address || 'Golghar Commercial Hub, Gorakhpur',
+          hospitalName: 'AIIMS Gorakhpur Emergency (Cath Lab Bay 1)',
+          ambulanceCallsign: ambulance?.callsign || 'Ambulance MEDIC-12 (ALS Super-Care)',
+          driverName: 'Paramedic Rajesh Sharma',
+          driverPhone: '+91 98765-43210',
+          vitals: telemetry?.incident?.patient_vitals || { heart_rate: 134, systolic_bp: 82, diastolic_bp: 54, spo2: 88 }
+        });
+      }
+    };
+
+    checkActiveRide();
+
+    const unsubAccept = rideService.on('rideAccepted', (ride) => {
+      setActivePatientMission(ride);
+      triggerToast(`🚨 NEW PATIENT MISSION: ${ride.patientName} booked Ambulance!`);
+    });
+
+    const unsubComplete = rideService.on('rideCompleted', () => {
+      checkActiveRide();
+    });
+
+    return () => {
+      unsubAccept();
+      unsubComplete();
+    };
+  }, [telemetry]);
 
   // Turn single junction Green or Red
   const handleSetSignalState = async (sigId, newState) => {
@@ -108,6 +207,94 @@ export default function SignalCorridorView({
   };
 
   const greenCount = signals.filter(s => s.state === 'green_wave').length;
+  const ambCoords = ambulance?.coordinates || { lat: 26.7606, lng: 83.3732 };
+
+  // 1. Initialize Interactive Leaflet Map for Traffic Police
+  useEffect(() => {
+    if (!mapContainerRef.current) return;
+    if (mapInstanceRef.current) return;
+
+    const map = L.map(mapContainerRef.current, {
+      center: [ambCoords.lat, ambCoords.lng],
+      zoom: 14,
+      zoomControl: true
+    });
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 19
+    }).addTo(map);
+
+    mapInstanceRef.current = map;
+
+    // Draw route corridor polyline if available
+    const routePts = (telemetry?.route_coords || []).map(pt => [pt.lat, pt.lng]);
+    if (routePts.length > 0) {
+      routePolylineRef.current = L.polyline(routePts, {
+        color: '#10B981',
+        weight: 5,
+        opacity: 0.85,
+        dashArray: '8, 8',
+        lineCap: 'round'
+      }).addTo(map);
+    }
+
+    return () => {
+      map.remove();
+      mapInstanceRef.current = null;
+    };
+  }, []);
+
+  // 2. Update Ambulance Vehicle Marker in Real-Time
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    const currentCoords = [ambCoords.lat, ambCoords.lng];
+    const icon = createAmbulanceIcon(ambulance?.heading || 0, ambulance?.siren_active !== false, ambulance?.speed_kmh || 58);
+
+    if (!ambMarkerRef.current) {
+      ambMarkerRef.current = L.marker(currentCoords, { icon }).addTo(map);
+      ambMarkerRef.current.bindPopup(`
+        <div style="font-family: sans-serif; font-size: 12px; padding: 4px;">
+          <strong style="color: #DC2626;">${ambulance?.callsign || 'MEDIC-12'}</strong><br/>
+          <span>Status: <strong>${ambulance?.status || 'Active Transport'}</strong></span><br/>
+          <span>Velocity: <strong>${ambulance?.speed_kmh || 58} km/h</strong></span><br/>
+          <span>ETA to AIIMS: <strong>~${Math.round((ambulance?.eta_seconds || 240) / 60)} mins</strong></span>
+        </div>
+      `);
+    } else {
+      ambMarkerRef.current.setLatLng(currentCoords);
+      ambMarkerRef.current.setIcon(icon);
+    }
+  }, [ambCoords.lat, ambCoords.lng, ambulance?.speed_kmh, ambulance?.siren_active]);
+
+  // 3. Update Signal Markers along the Corridor
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    // Remove existing signal markers
+    signalMarkersRef.current.forEach(m => m.remove());
+    signalMarkersRef.current = [];
+
+    signals.forEach((sig, idx) => {
+      if (sig.coordinates && sig.coordinates.lat && sig.coordinates.lng) {
+        const icon = createSignalMarkerIcon(sig.state, idx + 1, sig.name);
+        const marker = L.marker([sig.coordinates.lat, sig.coordinates.lng], { icon })
+          .addTo(map)
+          .bindPopup(`
+            <div style="font-family: sans-serif; font-size: 12px; padding: 4px;">
+              <strong>Junction #${idx + 1}: ${sig.name}</strong><br/>
+              <span>Signal Status: <strong>${sig.state}</strong></span><br/>
+              <span>Distance: <strong>${sig.distance_meters || 450}m</strong></span>
+            </div>
+          `);
+        
+        signalMarkersRef.current.push(marker);
+      }
+    });
+  }, [signals]);
 
   return (
     <div className="space-y-4">
@@ -125,7 +312,85 @@ export default function SignalCorridorView({
         </div>
       )}
 
-      {/* Top Hero Banner with GIANT 1-CLICK BUTTON */}
+      {/* ================= HIGH-PRIORITY ACTIVE PATIENT MISSION BANNER ================= */}
+      {activePatientMission && (
+        <div className="bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white p-4 sm:p-5 rounded-3xl shadow-xl border-2 border-red-400/50 space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-2xl shrink-0 shadow-inner">
+                🚨
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded-full bg-white/25 text-white font-mono font-black text-[10px] uppercase tracking-wider animate-pulse">
+                    ACTIVE PATIENT EMERGENCY MISSION
+                  </span>
+                  <span className="text-[10px] font-bold text-red-100 bg-black/25 px-2 py-0.5 rounded-md">
+                    CODE-1 AMBULANCE PRIORITY
+                  </span>
+                </div>
+                <h2 className="text-lg sm:text-xl font-black mt-1">
+                  Patient: {activePatientMission.patientName || 'Citizen Emergency Patient'}
+                </h2>
+                <p className="text-xs text-red-100 font-medium">
+                  Complaint: <strong className="text-white underline">{activePatientMission.emergencyType || 'Cardiac STEMI / Chest Pain'}</strong>
+                </p>
+              </div>
+            </div>
+
+            {/* Direct Calling Actions for Traffic Police */}
+            <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+              <button
+                type="button"
+                onClick={() => {
+                  try { soundFx?.playClick?.(); } catch (e) {}
+                  setInitialCallTab('ambulances');
+                  setShowCallModal(true);
+                }}
+                className="px-3.5 py-2 rounded-xl bg-white text-red-600 hover:bg-red-50 text-xs font-black shadow-md flex items-center gap-1.5 cursor-pointer transition-all hover:scale-105"
+              >
+                <PhoneCall className="w-3.5 h-3.5 fill-current" />
+                <span>Call Ambulance Driver 📞</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  try { soundFx?.playClick?.(); } catch (e) {}
+                  setInitialCallTab('doctors');
+                  setShowCallModal(true);
+                }}
+                className="px-3.5 py-2 rounded-xl bg-black/30 hover:bg-black/50 text-white text-xs font-bold border border-white/30 flex items-center gap-1.5 cursor-pointer transition-all"
+              >
+                <PhoneCall className="w-3.5 h-3.5" />
+                <span>Call ER Doctor 📞</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Mission Details Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 border-t border-white/20 text-xs">
+            <div className="bg-black/20 p-2 rounded-xl">
+              <span className="text-[10px] text-red-200 uppercase font-bold block">Assigned Ambulance</span>
+              <span className="font-mono font-black text-white">{activePatientMission.ambulanceCallsign || 'MEDIC-12 (ALS)'}</span>
+            </div>
+            <div className="bg-black/20 p-2 rounded-xl">
+              <span className="text-[10px] text-red-200 uppercase font-bold block">Pickup Location</span>
+              <span className="font-bold text-white truncate block">{activePatientMission.pickupAddress || 'Golghar, Gorakhpur'}</span>
+            </div>
+            <div className="bg-black/20 p-2 rounded-xl">
+              <span className="text-[10px] text-red-200 uppercase font-bold block">Target Hospital</span>
+              <span className="font-bold text-white truncate block">{activePatientMission.hospitalName || 'AIIMS Gorakhpur'}</span>
+            </div>
+            <div className="bg-black/20 p-2 rounded-xl">
+              <span className="text-[10px] text-red-200 uppercase font-bold block">Current Velocity / ETA</span>
+              <span className="font-mono font-black text-emerald-300">{ambulance?.speed_kmh || 58} km/h • ~{Math.round((ambulance?.eta_seconds || 240) / 60)}m</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ================= TOP HERO BANNER WITH GIANT 1-CLICK BUTTON ================= */}
       <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
         
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -134,11 +399,14 @@ export default function SignalCorridorView({
               🚦
             </div>
             <div>
-              <h2 className="text-lg font-black text-slate-900 dark:text-white">
-                Traffic Police Signal Control Deck
+              <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
+                <span>Traffic Police Signal Control Deck</span>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-400 font-bold border border-emerald-300 dark:border-emerald-800">
+                  ITMS Online
+                </span>
               </h2>
               <p className="text-xs text-slate-500">
-                Ambulance <strong className="text-red-600 font-bold">{ambulance?.callsign || 'MEDIC-12'}</strong> is en route to AIIMS Gorakhpur
+                Ambulance <strong className="text-red-600 font-bold">{ambulance?.callsign || 'MEDIC-12'}</strong> is en route with patient to AIIMS Gorakhpur
               </p>
             </div>
           </div>
@@ -155,7 +423,7 @@ export default function SignalCorridorView({
           </div>
         </div>
 
-        {/* THE GIANT BUTTON ("bachha bhi click kare") */}
+        {/* THE GIANT 1-CLICK BUTTON ("PRESS TO TURN ALL LIGHTS GREEN FOR AMBULANCE") */}
         <button
           type="button"
           onClick={handleForceAllGreen}
@@ -192,40 +460,43 @@ export default function SignalCorridorView({
           </div>
         </div>
 
-        {/* Live Intercom Dispatch Bar for Traffic Police */}
-        <div className="p-3.5 bg-slate-100 dark:bg-slate-800/80 rounded-2xl border border-slate-200 dark:border-slate-700/80 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center space-x-2.5">
-            <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
-              <Radio className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="text-xs font-black text-slate-900 dark:text-white">
-                Live Field Dispatch Intercom
-              </div>
-              <div className="text-[11px] text-slate-500">
-                Direct WebRTC voice line to active units across devices
-              </div>
-            </div>
-          </div>
+      </div>
 
-          <div className="flex items-center space-x-2 w-full sm:w-auto">
-            <button
-              type="button"
-              onClick={() => {
-                try { soundFx?.playClick?.(); } catch (e) {}
-                setShowCallModal(true);
-              }}
-              className="flex-1 sm:flex-none px-4 py-2.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white text-xs font-bold rounded-xl shadow-xs hover:shadow-md transition-all flex items-center justify-center space-x-1.5 cursor-pointer"
-            >
-              <PhoneCall className="w-4 h-4" />
-              <span>Select Unit & Call 📞</span>
-            </button>
+      {/* ================= INTERACTIVE LIVE GPS CORRIDOR MAP ================= */}
+      <div className="bg-white dark:bg-slate-900 p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <Navigation className="w-4 h-4 text-emerald-500 animate-pulse" />
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-white">
+              Live Ambulance GPS Corridor & Signal Preemption Map
+            </h3>
+          </div>
+          <div className="text-[11px] font-mono font-bold text-slate-500">
+            GPS: <span className="text-emerald-600 dark:text-emerald-400">{ambCoords.lat.toFixed(4)}°N, {ambCoords.lng.toFixed(4)}°E</span>
           </div>
         </div>
 
+        {/* Leaflet Map Container */}
+        <div className="relative w-full h-[320px] rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-inner">
+          <div ref={mapContainerRef} className="w-full h-full z-10" />
+
+          {/* Floating Live Telemetry Badge on Map */}
+          <div className="absolute top-3 left-3 z-20 bg-slate-900/90 backdrop-blur-md text-white p-2.5 rounded-xl border border-slate-700 text-xs shadow-xl space-y-1 max-w-xs">
+            <div className="flex items-center gap-1.5 text-emerald-400 font-bold text-[10px]">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+              <span>LIVE ITMS TRAFFIC TRACKING RADAR</span>
+            </div>
+            <div className="font-bold text-white text-xs">
+              Corridor: Golghar ➔ Mohaddipur ➔ AIIMS
+            </div>
+            <div className="text-[10px] text-slate-300 font-mono">
+              Velocity: {ambulance?.speed_kmh || 58} km/h • Siren: {ambulance?.siren_active !== false ? 'ACTIVE 🚨' : 'STANDBY'}
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* 4 Large Street Junction Cards with Traffic Light Graphics */}
+      {/* ================= 4 LARGE STREET JUNCTION CARDS ================= */}
       <div className="space-y-3">
         <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
           Route Traffic Junctions (Road Signals Ahead):
@@ -323,6 +594,7 @@ export default function SignalCorridorView({
         onClose={() => setShowCallModal(false)}
         callerRole="traffic"
         callerName="Inspector R. Verma (Traffic ITMS)"
+        initialTab={initialCallTab}
       />
 
     </div>

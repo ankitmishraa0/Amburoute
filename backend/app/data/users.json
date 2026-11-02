@@ -32,7 +32,7 @@
     "role": "hospital",
     "department": "Hospital Emergency Room",
     "badge": "AIIMS GORAKHPUR ER",
-    "password": "aiims123",
+    "password": "$2b$12$OZ/7KCWzsXFNMfqdocLJUu9/ncs3G6amhjmUGXapFdM5SeB0eUbju",
     "status": "active",
     "assignedTab": "handoff",
     "createdAt": "2026-01-01",
@@ -45,10 +45,24 @@
     "role": "traffic",
     "department": "ITMS Traffic Police HQ",
     "badge": "GORAKHPUR TRAFFIC POLICE",
-    "password": "traffic123",
+    "password": "$2b$12$UZ8/rhy7vKFvZMO02WweOu2h0Ay2TSh1kxylADUbgZYQ1FSjl/hTG",
     "status": "active",
     "assignedTab": "signals",
     "createdAt": "2026-01-01",
     "description": "Real-time V2I intersection preemption, automated green wave corridors, and manual cycle overrides."
+  },
+  {
+    "id": "patient",
+    "username": "patient",
+    "name": "Citizen Patient (Emergency SOS)",
+    "role": "patient",
+    "department": "Patient Emergency Booking",
+    "badge": "CITIZEN RIDER",
+    "password": "123",
+    "status": "active",
+    "assignedTab": "patient_portal",
+    "createdAt": "2026-01-01",
+    "description": "Emergency 1-tap ambulance booking, live nearby fleet radar, and hospital ICU bed availability."
   }
 ]
+

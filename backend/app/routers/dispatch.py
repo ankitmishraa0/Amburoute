@@ -181,3 +181,48 @@ def driver_heartbeat(payload: Dict[str, Any]) -> Dict[str, Any]:
         ACTIVE_RIDE_STATE["online_drivers"] = drivers
     return {"status": "ok", "online_drivers": ACTIVE_RIDE_STATE["online_drivers"]}
 
+
+# ================= REAL-TIME EMERGENCY TELEMEDICINE CALL SIGNALING =================
+
+ACTIVE_CALL_STATE: Dict[str, Any] = {
+    "active_call": None
+}
+
+
+@router.get("/call/state")
+def get_call_state() -> Dict[str, Any]:
+    return ACTIVE_CALL_STATE
+
+
+@router.post("/call/dispatch")
+def dispatch_call(payload: Dict[str, Any]) -> Dict[str, Any]:
+    call = payload.get("call")
+    if call:
+        call["status"] = "outgoing"
+        ACTIVE_CALL_STATE["active_call"] = call
+    return {"status": "ok", "active_call": ACTIVE_CALL_STATE["active_call"]}
+
+
+@router.post("/call/accept")
+def accept_call(payload: Dict[str, Any]) -> Dict[str, Any]:
+    call = payload.get("call")
+    if call:
+        call["status"] = "connected"
+        ACTIVE_CALL_STATE["active_call"] = call
+    elif ACTIVE_CALL_STATE.get("active_call"):
+        ACTIVE_CALL_STATE["active_call"]["status"] = "connected"
+    return {"status": "connected", "active_call": ACTIVE_CALL_STATE["active_call"]}
+
+
+@router.post("/call/reject")
+def reject_call(payload: Dict[str, Any] = None) -> Dict[str, Any]:
+    ACTIVE_CALL_STATE["active_call"] = None
+    return {"status": "rejected"}
+
+
+@router.post("/call/end")
+def end_call(payload: Dict[str, Any] = None) -> Dict[str, Any]:
+    ACTIVE_CALL_STATE["active_call"] = None
+    return {"status": "ended"}
+
+

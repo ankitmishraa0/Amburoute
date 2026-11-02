@@ -59,7 +59,7 @@ export default function Header({
       { id: 'signals', label: '🚦 Traffic Signal Preemption', icon: Signal, desc: 'Green Wave Corridor' },
     ],
     patient: [
-      { id: 'patient_portal', label: '🚑 Book Ambulance (SOS)', icon: Navigation, desc: 'Zomato/Rapido style booking' },
+      { id: 'patient_portal', label: '🚑 Book Ambulance (SOS)', icon: Navigation, desc: 'Emergency Dispatch booking' },
       { id: 'hospitals', label: '🏥 Emergency Hospitals', icon: Building2, desc: 'Nearby ICU beds' },
     ],
     admin: [
@@ -210,3 +210,4 @@ export default function Header({
     </header>
   );
 }
+

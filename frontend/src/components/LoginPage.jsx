@@ -447,7 +447,7 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
               <span className="text-xl animate-bounce">🚑</span>
               <div className="text-left">
                 <div className="leading-tight text-white font-black">Need an Ambulance Right Now?</div>
-                <div className="text-[10px] text-red-100 font-normal">1-Tap Citizen Booking (Zomato / Rapido Style)</div>
+                <div className="text-[10px] text-red-100 font-normal">Instant 1-Tap Emergency Ambulance Booking</div>
               </div>
             </div>
             <span className="text-xs bg-white/20 px-2.5 py-1 rounded-full uppercase tracking-wider group-hover:translate-x-0.5 transition-transform font-bold">
@@ -1171,3 +1171,4 @@ export default function LoginPage({ onLogin, theme = 'light', toggleTheme }) {
     </div>
   );
 }
+

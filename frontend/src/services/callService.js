@@ -1,9 +1,12 @@
 /**
  * Real-Time Cross-Device & Cross-Tab Telemedicine Voice & Video Call Service
- * Uses PeerJS (WebRTC) for multi-device internet communication,
- * with BroadcastChannel / localStorage fallback for instantaneous multi-tab testing.
+ * Multi-Layer Hybrid Architecture:
+ * 1. BroadcastChannel & LocalStorage - 0ms instantaneous multi-tab / multi-window synchronization
+ * 2. Backend REST API Signaling (/api/call/*) - multi-device cross-network synchronization
+ * 3. WebRTC PeerJS (P2P Media & Audio) - direct audio/video streaming with dynamic ID recovery
  */
 import { Peer } from 'peerjs';
+import { soundFx } from './sound';
 
 // Pre-defined directory of Doctors on duty in Emergency Department
 export const DOCTORS_DIRECTORY = [
@@ -125,6 +128,34 @@ export const TRAFFIC_DIRECTORY = [
   }
 ];
 
+// Citizen Patients Directory for Direct Calling
+export const PATIENTS_DIRECTORY = [
+  {
+    id: 'patient-sos-citizen',
+    name: 'Citizen Patient (Emergency SOS)',
+    roleKey: 'patient',
+    condition: 'Acute STEMI / Medical Emergency',
+    location: 'Golghar Commercial Hub, Gorakhpur',
+    status: 'SOS Active • Live Rider Intercom',
+    statusColor: 'emerald',
+    badge: 'LIVE PATIENT LINE',
+    avatar: '🧑‍💼',
+    phone: '+91 98765-11223'
+  }
+];
+
+// Role Normalizer: maps any alias to core 4 roles ('driver', 'hospital', 'patient', 'traffic')
+export function normalizeRole(role) {
+  if (!role) return 'driver';
+  const clean = String(role).toLowerCase().trim();
+  if (clean.includes('driver')) return 'driver';
+  if (clean.includes('patient')) return 'patient';
+  if (clean.includes('doc') || clean.includes('hosp')) return 'hospital';
+  if (clean.includes('traffic')) return 'traffic';
+  if (clean.includes('admin')) return 'admin';
+  return clean;
+}
+
 class EmergencyCallService {
   constructor() {
     this.peer = null;
@@ -138,9 +169,11 @@ class EmergencyCallService {
     this.activeCallTarget = null;
     this.activeCallTargetName = null;
     this.activeCallerName = null;
-    this.callType = 'video'; // 'video' | 'voice'
+    this.callType = 'voice'; // 'video' | 'voice'
     this.isMuted = false;
     this.isVideoOff = false;
+    this.apiSyncTimer = null;
+    this.activeRolePeerIds = {};
 
     // Callbacks
     this.listeners = {
@@ -150,7 +183,7 @@ class EmergencyCallService {
       stateChange: []
     };
 
-    // Cross-tab broadcast channel for local multi-tab instant signaling
+    // 1. Cross-tab BroadcastChannel for 0ms instant multi-tab signaling
     this.bc = typeof window !== 'undefined' && 'BroadcastChannel' in window 
       ? new BroadcastChannel('amburoute_emergency_calls') 
       : null;
@@ -159,6 +192,7 @@ class EmergencyCallService {
       this.bc.onmessage = (event) => this._handleSignalingMessage(event.data);
     }
 
+    // 2. Storage event for cross-tab fallback
     if (typeof window !== 'undefined') {
       window.addEventListener('storage', (e) => {
         if (e.key === 'amburoute_call_signal' && e.newValue) {
@@ -169,26 +203,96 @@ class EmergencyCallService {
         }
       });
     }
+
+    // 3. Backend API Polling Sync (every 800ms) for multi-device cross-network support
+    if (typeof window !== 'undefined') {
+      this._startApiSync();
+    }
+  }
+
+  // ================= 1. BACKEND API SYNC (/api/call/state) =================
+
+  _startApiSync() {
+    if (this.apiSyncTimer) clearInterval(this.apiSyncTimer);
+    this._fetchApiCallState();
+    this.apiSyncTimer = setInterval(() => {
+      this._fetchApiCallState();
+    }, 800);
+  }
+
+  async _fetchApiCallState() {
+    try {
+      const res = await fetch('/api/call/state', { cache: 'no-store' });
+      if (!res.ok) return;
+
+      const ct = res.headers.get('content-type') || '';
+      if (!ct.includes('application/json')) return; // Avoid HTML 404/rewrite crash on Vercel
+
+      const data = await res.json();
+      const activeCall = data?.active_call;
+
+      if (activeCall && activeCall.status) {
+        const targetRole = normalizeRole(activeCall.targetRole);
+        const callerRole = normalizeRole(activeCall.callerRole);
+
+        // Check if there is an incoming call meant for my role
+        if (targetRole === this.myRole && activeCall.status === 'outgoing') {
+          if (this.callState === 'idle') {
+            this._triggerIncomingCall({
+              callerRole: activeCall.callerRole,
+              callerName: activeCall.callerName,
+              targetRole: activeCall.targetRole,
+              targetName: activeCall.targetName,
+              department: activeCall.department,
+              callType: activeCall.callType || 'voice',
+              callId: activeCall.callId
+            });
+          }
+        } 
+        // If I am the caller and target accepted the call
+        else if (callerRole === this.myRole && activeCall.status === 'connected') {
+          if (this.callState === 'outgoing') {
+            this.callState = 'connected';
+            const displayStream = this.remoteStream || this.localStream || this._createSyntheticMediaStream(this.callType === 'video');
+            this._notify('connected', { remoteStream: displayStream, localStream: this.localStream });
+            this._notify('stateChange', this.callState);
+          }
+        }
+        // If call was explicitly ended or rejected
+        else if (activeCall.status === 'ended' || activeCall.status === 'rejected') {
+          if (this.callState !== 'idle') {
+            this.endCall(false);
+          }
+        }
+      }
+    } catch (e) {
+      // Backend unavailable, fallback to BroadcastChannel and WebRTC
+    }
   }
 
   // Generate standardized peer ID for role
   getPeerIdForRole(role) {
-    const cleanRole = (role || 'driver').toLowerCase();
-    return `amburoute-station-${cleanRole}`;
+    const cleanRole = normalizeRole(role || 'driver');
+    return `amburoute-st-${cleanRole}`;
   }
 
   // Initialize service for currently logged-in user
   init(role) {
-    this.myRole = (role || 'driver').toLowerCase();
+    this.myRole = normalizeRole(role || 'driver');
     this.myPeerId = this.getPeerIdForRole(this.myRole);
 
+    this._connectPeer(this.myPeerId);
+  }
+
+  _connectPeer(peerIdToUse) {
     if (this.peer) {
       try { this.peer.destroy(); } catch (e) {}
+      this.peer = null;
     }
 
     try {
-      this.peer = new Peer(this.myPeerId, {
-        debug: 1,
+      this.peer = new Peer(peerIdToUse, {
+        debug: 0,
         config: {
           iceServers: [
             { urls: 'stun:stun.l.google.com:19302' },
@@ -199,42 +303,58 @@ class EmergencyCallService {
 
       this.peer.on('open', (id) => {
         this.myPeerId = id;
+        this.activeRolePeerIds[this.myRole] = id;
+        this._broadcastSignal({
+          type: 'PEER_ANNOUNCE',
+          role: this.myRole,
+          peerId: id
+        });
       });
 
       // Handle incoming WebRTC calls from another device
       this.peer.on('call', async (call) => {
-        this.activeCall = call;
-        const callerRole = call.metadata?.callerRole || 'driver';
-        const callType = call.metadata?.callType || 'video';
-
-        this._triggerIncomingCall({
-          callerRole,
-          callerName: call.metadata?.callerName || (callerRole === 'driver' ? 'Ambulance MEDIC-12' : callerRole === 'patient' ? 'Citizen Patient' : 'AIIMS Doctor'),
-          targetName: call.metadata?.targetName || 'Emergency Desk',
-          department: call.metadata?.department,
-          callType,
-          callId: call.peer
-        });
-
-        // Set up answer stream receiver
-        call.on('stream', (remoteMediaStream) => {
-          this.remoteStream = remoteMediaStream;
-          this.callState = 'connected';
-          this._notify('connected', { remoteStream: this.remoteStream, localStream: this.localStream });
-          this._notify('stateChange', this.callState);
-        });
-
-        call.on('close', () => {
-          this.endCall(false);
-        });
+        this._handleIncomingPeerCall(call);
       });
 
       this.peer.on('error', (err) => {
-        console.warn('PeerJS notice:', err.type);
+        // If primary role ID is already taken on public broker, retry with unique dynamic ID
+        if (err.type === 'unavailable-id') {
+          const dynId = `amburoute-st-${this.myRole}-${Math.random().toString(36).substring(2, 6)}`;
+          setTimeout(() => {
+            this._connectPeer(dynId);
+          }, 500);
+        }
       });
     } catch (e) {
-      console.warn('PeerJS init fallback to local channel', e);
+      console.warn('PeerJS init fallback to local/API channels', e);
     }
+  }
+
+  _handleIncomingPeerCall(call) {
+    this.activeCall = call;
+    const callerRole = normalizeRole(call.metadata?.callerRole || 'driver');
+    const callType = call.metadata?.callType || 'voice';
+
+    this._triggerIncomingCall({
+      callerRole,
+      callerName: call.metadata?.callerName || (callerRole === 'driver' ? 'Ambulance MEDIC-12' : callerRole === 'patient' ? 'Citizen Patient' : 'AIIMS Doctor'),
+      targetName: call.metadata?.targetName || 'Emergency Desk',
+      department: call.metadata?.department,
+      callType,
+      callId: call.peer
+    });
+
+    // Set up answer stream receiver
+    call.on('stream', (remoteMediaStream) => {
+      this.remoteStream = remoteMediaStream;
+      this.callState = 'connected';
+      this._notify('connected', { remoteStream: this.remoteStream, localStream: this.localStream });
+      this._notify('stateChange', this.callState);
+    });
+
+    call.on('close', () => {
+      this.endCall(false);
+    });
   }
 
   // Subscribe to call events
@@ -267,8 +387,14 @@ class EmergencyCallService {
   _handleSignalingMessage(msg) {
     if (!msg || !msg.type) return;
 
-    // Check if message is intended for my role
-    if (msg.targetRole !== this.myRole) return;
+    if (msg.type === 'PEER_ANNOUNCE' && msg.role && msg.peerId) {
+      this.activeRolePeerIds[normalizeRole(msg.role)] = msg.peerId;
+      return;
+    }
+
+    // Check if message is intended for my normalized role
+    const targetRole = normalizeRole(msg.targetRole);
+    if (targetRole !== this.myRole) return;
 
     if (msg.type === 'CALL_REQUEST') {
       this._triggerIncomingCall({
@@ -277,13 +403,14 @@ class EmergencyCallService {
         targetRole: msg.targetRole,
         targetName: msg.targetName,
         department: msg.department,
-        callType: msg.callType || 'video',
+        callType: msg.callType || 'voice',
         callId: msg.callId
       });
     } else if (msg.type === 'CALL_ACCEPTED') {
       if (this.callState === 'outgoing') {
         this.callState = 'connected';
-        this._notify('connected', { remoteStream: this.remoteStream, localStream: this.localStream });
+        const displayStream = this.remoteStream || this.localStream || this._createSyntheticMediaStream(this.callType === 'video');
+        this._notify('connected', { remoteStream: displayStream, localStream: this.localStream });
         this._notify('stateChange', this.callState);
       }
     } else if (msg.type === 'CALL_REJECTED' || msg.type === 'CALL_ENDED') {
@@ -293,10 +420,12 @@ class EmergencyCallService {
 
   _broadcastSignal(msg) {
     if (this.bc) {
-      this.bc.postMessage(msg);
+      try { this.bc.postMessage(msg); } catch (e) {}
     }
     if (typeof window !== 'undefined') {
-      localStorage.setItem('amburoute_call_signal', JSON.stringify({ ...msg, _t: Date.now() }));
+      try {
+        localStorage.setItem('amburoute_call_signal', JSON.stringify({ ...msg, _t: Date.now() }));
+      } catch (e) {}
     }
   }
 
@@ -319,7 +448,7 @@ class EmergencyCallService {
     }
   }
 
-  // Synthesize realistic high-tech emergency telemetry canvas video stream
+  // Synthesize realistic emergency telemetry canvas video & audio stream
   _createSyntheticMediaStream(needVideo = true) {
     const canvas = document.createElement('canvas');
     canvas.width = 640;
@@ -398,7 +527,7 @@ class EmergencyCallService {
     const canvasStream = canvas.captureStream ? canvas.captureStream(25) : new MediaStream();
 
     // Synthetic audio track
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    const AudioContextClass = typeof window !== 'undefined' ? (window.AudioContext || window.webkitAudioContext) : null;
     if (AudioContextClass) {
       try {
         const audioCtx = new AudioContextClass();
@@ -416,48 +545,67 @@ class EmergencyCallService {
     return canvasStream;
   }
 
-  // Initiate an emergency call to a specific doctor or ambulance
-  async makeCall(targetRoleOrOptions, maybeCallType = 'video', maybeCallerName = null, maybeTargetName = null, maybeDept = null) {
-    let targetRole, callType, callerName, targetName, department;
+  // Initiate an emergency call between Doctor, Driver, or Patient
+  async makeCall(targetRoleOrOptions, maybeCallType = 'voice', maybeCallerName = null, maybeTargetName = null, maybeDept = null) {
+    let targetRole, callType, callerName, targetName, department, callerRole;
 
     if (typeof targetRoleOrOptions === 'object' && targetRoleOrOptions !== null) {
-      targetRole = targetRoleOrOptions.targetRole || 'hospital';
-      callType = targetRoleOrOptions.callType || 'video';
-      callerName = targetRoleOrOptions.callerName || (this.myRole === 'driver' ? 'Ambulance MEDIC-12' : this.myRole === 'patient' ? 'Citizen Patient' : 'AIIMS Doctor');
+      targetRole = targetRoleOrOptions.targetRole || 'driver';
+      callType = targetRoleOrOptions.callType || 'voice';
+      callerRole = targetRoleOrOptions.callerRole || this.myRole || 'driver';
+      callerName = targetRoleOrOptions.callerName || (callerRole === 'driver' ? 'Ambulance MEDIC-12' : callerRole === 'patient' ? 'Citizen Patient' : callerRole === 'hospital' ? 'AIIMS Doctor' : 'ITMS Traffic');
       targetName = targetRoleOrOptions.targetName || 'Emergency Desk';
       department = targetRoleOrOptions.department || 'Trauma Center';
     } else {
-      targetRole = targetRoleOrOptions || 'hospital';
-      callType = maybeCallType || 'video';
-      callerName = maybeCallerName || (this.myRole === 'driver' ? 'Ambulance MEDIC-12' : this.myRole === 'hospital' ? 'Dr. Sharma (AIIMS)' : this.myRole === 'patient' ? 'Citizen Patient' : 'ITMS Traffic');
-      targetName = maybeTargetName || (targetRole === 'hospital' ? 'Dr. Sharma (Cardiology Head)' : targetRole === 'driver' ? 'Ambulance MEDIC-12' : 'ITMS Traffic Control');
+      targetRole = targetRoleOrOptions || 'driver';
+      callType = maybeCallType || 'voice';
+      callerRole = this.myRole || 'driver';
+      callerName = maybeCallerName || (callerRole === 'driver' ? 'Ambulance MEDIC-12' : callerRole === 'hospital' ? 'Dr. Sharma (AIIMS)' : callerRole === 'patient' ? 'Citizen Patient' : 'ITMS Traffic');
+      targetName = maybeTargetName || (targetRole === 'hospital' ? 'Dr. Sharma (Cardiology Head)' : targetRole === 'driver' ? 'Ambulance MEDIC-12' : targetRole === 'patient' ? 'Citizen Patient' : 'ITMS Traffic Control');
       department = maybeDept || 'Emergency Operations';
     }
 
+    const normalizedTargetRole = normalizeRole(targetRole);
+    const normalizedCallerRole = normalizeRole(callerRole);
+
+    this.myRole = normalizedCallerRole;
+    this.myPeerId = this.getPeerIdForRole(this.myRole);
+
     this.callState = 'outgoing';
-    this.activeCallTarget = targetRole;
+    this.activeCallTarget = normalizedTargetRole;
     this.activeCallTargetName = targetName;
     this.activeCallerName = callerName;
     this.callType = callType;
     this._notify('stateChange', this.callState);
 
+    try { soundFx?.startRinging?.(); } catch (e) {}
+
     const localStream = await this.getLocalStream(callType === 'video');
 
-    // 1. Broadcast signal across local tabs
-    this._broadcastSignal({
+    const signalMsg = {
       type: 'CALL_REQUEST',
       callerRole: this.myRole,
       callerName: callerName,
-      targetRole: targetRole,
+      targetRole: normalizedTargetRole,
       targetName: targetName,
       department: department,
       callType: callType,
-      callId: this.myPeerId
-    });
+      callId: `call-${Date.now()}`
+    };
 
-    // 2. Connect via PeerJS to peer on other device
+    // 1. Post to Backend API for multi-device sync
+    fetch('/api/call/dispatch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ call: signalMsg })
+    }).catch(() => {});
+
+    // 2. Broadcast signal across local browser tabs & windows
+    this._broadcastSignal(signalMsg);
+
+    // 3. Connect via PeerJS to peer on other device (if available)
     if (this.peer && !this.peer.destroyed) {
-      const targetPeerId = this.getPeerIdForRole(targetRole);
+      const targetPeerId = this.activeRolePeerIds[normalizedTargetRole] || this.getPeerIdForRole(normalizedTargetRole);
       try {
         const call = this.peer.call(targetPeerId, localStream, {
           metadata: {
@@ -473,6 +621,7 @@ class EmergencyCallService {
           this.activeCall = call;
 
           call.on('stream', (remoteMediaStream) => {
+            try { soundFx?.stopRinging?.(); } catch (e) {}
             this.remoteStream = remoteMediaStream;
             this.callState = 'connected';
             this._notify('connected', { remoteStream: this.remoteStream, localStream: this.localStream });
@@ -484,7 +633,7 @@ class EmergencyCallService {
           });
         }
       } catch (e) {
-        console.warn('PeerJS call error, relying on signaling channel', e);
+        console.warn('PeerJS call notice (hybrid channels active)', e);
       }
     }
   }
@@ -493,8 +642,10 @@ class EmergencyCallService {
   async acceptCall() {
     if (!this.incomingCallData) return;
 
-    const callerRole = this.incomingCallData.callerRole;
-    const callType = this.incomingCallData.callType || 'video';
+    try { soundFx?.stopRinging?.(); } catch (e) {}
+
+    const callerRole = normalizeRole(this.incomingCallData.callerRole);
+    const callType = this.incomingCallData.callType || 'voice';
     this.activeCallTarget = callerRole;
     this.activeCallTargetName = this.incomingCallData.callerName;
     this.callType = callType;
@@ -508,27 +659,50 @@ class EmergencyCallService {
       } catch (e) {}
     }
 
-    // Broadcast accept signal
-    this._broadcastSignal({
+    const acceptMsg = {
       type: 'CALL_ACCEPTED',
       callerRole: this.myRole,
-      targetRole: callerRole
-    });
+      targetRole: callerRole,
+      callId: this.incomingCallData.callId
+    };
+
+    // 1. Post to Backend API
+    fetch('/api/call/accept', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        call: {
+          callerRole: callerRole,
+          targetRole: this.myRole,
+          status: 'connected',
+          callId: this.incomingCallData.callId
+        }
+      })
+    }).catch(() => {});
+
+    // 2. Broadcast accept signal locally
+    this._broadcastSignal(acceptMsg);
 
     this.callState = 'connected';
-    this._notify('connected', { remoteStream: this.remoteStream || localStream, localStream });
+    const displayStream = this.remoteStream || localStream;
+    this._notify('connected', { remoteStream: displayStream, localStream });
     this._notify('stateChange', this.callState);
   }
 
   // Reject incoming call
   rejectCall() {
+    try { soundFx?.stopRinging?.(); } catch (e) {}
+
     if (this.incomingCallData) {
+      const callerRole = normalizeRole(this.incomingCallData.callerRole);
       this._broadcastSignal({
         type: 'CALL_REJECTED',
         callerRole: this.myRole,
-        targetRole: this.incomingCallData.callerRole
+        targetRole: callerRole
       });
     }
+
+    fetch('/api/call/reject', { method: 'POST' }).catch(() => {});
 
     if (this.activeCall) {
       try { this.activeCall.close(); } catch (e) {}
@@ -542,6 +716,8 @@ class EmergencyCallService {
 
   // End active call
   endCall(broadcast = true) {
+    try { soundFx?.stopRinging?.(); } catch (e) {}
+
     if (broadcast && this.activeCallTarget) {
       this._broadcastSignal({
         type: 'CALL_ENDED',
@@ -549,6 +725,8 @@ class EmergencyCallService {
         targetRole: this.activeCallTarget
       });
     }
+
+    fetch('/api/call/end', { method: 'POST' }).catch(() => {});
 
     if (this.activeCall) {
       try { this.activeCall.close(); } catch (e) {}
@@ -571,6 +749,15 @@ class EmergencyCallService {
 
     this._notify('stateChange', this.callState);
     this._notify('ended');
+  }
+
+  // Instant simulation connect for single-screen demo
+  simulateConnected() {
+    try { soundFx?.stopRinging?.(); } catch (e) {}
+    this.callState = 'connected';
+    const displayStream = this.remoteStream || this.localStream || this._createSyntheticMediaStream(this.callType === 'video');
+    this._notify('connected', { remoteStream: displayStream, localStream: this.localStream });
+    this._notify('stateChange', this.callState);
   }
 
   toggleMute() {

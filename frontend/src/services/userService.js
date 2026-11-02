@@ -72,7 +72,7 @@ export const DEFAULT_USERS = [
     status: 'active',
     assignedTab: 'patient_portal',
     createdAt: '2026-01-01',
-    description: '1-Tap ambulance booking (Zomato/Rapido style), nearby ambulances, and hospital ICU bed availability.'
+    description: '1-Tap ambulance booking (Emergency Dispatch), nearby ambulances, and hospital ICU bed availability.'
   }
 ];
 
@@ -697,3 +697,4 @@ export const userService = {
     ) || null;
   }
 };
+

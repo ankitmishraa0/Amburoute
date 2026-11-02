@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { PhoneCall, PhoneOff, Video, Mic, Volume2 } from 'lucide-react';
-import { callService } from '@/services/callService';
+import { callService, normalizeRole } from '@/services/callService';
 import { soundFx } from '@/services/sound';
 
 export default function IncomingCallNotification() {
@@ -50,11 +50,13 @@ export default function IncomingCallNotification() {
     setIncomingCall(null);
   };
 
-  const isAmbulance = incomingCall.callerRole === 'driver';
-  const isTraffic = incomingCall.callerRole === 'traffic';
+  const callerRole = normalizeRole(incomingCall.callerRole);
+  const isAmbulance = callerRole === 'driver';
+  const isTraffic = callerRole === 'traffic';
+  const isPatient = callerRole === 'patient';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-slate-900/75 backdrop-blur-md animate-fade-in pointer-events-auto">
       <div className="relative w-full max-w-md bg-white dark:bg-slate-900 border-2 border-red-500 rounded-3xl p-6 shadow-2xl text-center space-y-5 ring-4 ring-red-500/30">
         
         {/* Pulsing Emergency Beacon Ring */}
@@ -74,7 +76,11 @@ export default function IncomingCallNotification() {
         <div className="space-y-1.5">
           <div className="flex items-center justify-center gap-1.5 flex-wrap">
             <span className="text-[11px] font-black uppercase tracking-wider text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-950/60 px-3 py-1 rounded-full border border-red-200 dark:border-red-900 inline-block animate-pulse">
-              🚨 INCOMING EMERGENCY CALL
+              {isPatient 
+                ? '🚨 CITIZEN PATIENT CALL' 
+                : isAmbulance 
+                  ? '🚑 AMBULANCE CREW CALL' 
+                  : '🚨 INCOMING EMERGENCY CALL'}
             </span>
             <span className="text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2 py-0.5 rounded-full uppercase">
               {incomingCall.callType === 'video' ? '📹 HD Video Call' : '📞 Voice Intercom'}
@@ -82,7 +88,7 @@ export default function IncomingCallNotification() {
           </div>
 
           <h3 className="text-xl font-black text-slate-900 dark:text-white pt-1">
-            {incomingCall.callerName || (isAmbulance ? 'Ambulance MEDIC-12' : isTraffic ? 'Traffic Control ITMS' : 'Doctor AIIMS')}
+            {incomingCall.callerName || (isPatient ? 'Citizen Patient (SOS)' : isAmbulance ? 'Ambulance MEDIC-12' : isTraffic ? 'Traffic Control ITMS' : 'Doctor AIIMS')}
           </h3>
 
           {incomingCall.targetName && (
@@ -92,11 +98,13 @@ export default function IncomingCallNotification() {
           )}
 
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            {isAmbulance 
-              ? 'Ambulance Paramedic is transmitting live patient telemedicine stream' 
-              : incomingCall.callerRole === 'patient'
-                ? 'Citizen / Patient is requesting urgent emergency assistance'
-                : 'Hospital Trauma Desk is calling with pre-arrival medical orders'}
+            {isPatient
+              ? 'Citizen Patient is calling on the direct emergency intercom line. Tap Accept to speak.'
+              : isAmbulance 
+                ? 'Ambulance Paramedic / Driver is calling with live response telemetry' 
+                : isTraffic
+                  ? 'Traffic Police Desk is calling with green wave corridor update'
+                  : 'Hospital Trauma Desk is calling with pre-arrival medical orders'}
           </p>
         </div>
 

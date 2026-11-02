@@ -3,6 +3,7 @@ import { Navigation, Building2, Signal, Shield, User } from 'lucide-react';
 export const OPERATOR_ROLES = [
   {
     id: 'driver',
+    role: 'driver',
     label: 'Ambulance Crew',
     shortLabel: 'Ambulance',
     badge: 'UNIT MEDIC-12',
@@ -15,6 +16,7 @@ export const OPERATOR_ROLES = [
   },
   {
     id: 'hospital',
+    role: 'hospital',
     label: 'Emergency Department',
     shortLabel: 'Hospital ER',
     badge: 'ER TRAUMA DESK',
@@ -27,6 +29,7 @@ export const OPERATOR_ROLES = [
   },
   {
     id: 'traffic',
+    role: 'traffic',
     label: 'Traffic Control (ITMS)',
     shortLabel: 'Traffic ITMS',
     badge: 'ITMS CONTROL',
@@ -39,18 +42,20 @@ export const OPERATOR_ROLES = [
   },
   {
     id: 'patient',
+    role: 'patient',
     label: 'Citizen / Patient (SOS)',
     shortLabel: 'Patient (SOS)',
     badge: 'CITIZEN RIDER',
     icon: User,
     assignedTab: 'patient_portal',
     department: 'Patient Emergency Booking',
-    description: 'Zomato/Rapido-style 1-tap ambulance booking, live nearby fleet radar, and hospital ICU bed availability.',
+    description: 'Emergency 1-tap ambulance booking, live nearby fleet radar, and hospital ICU bed availability.',
     demoUsername: 'patient',
     demoPassword: '123'
   },
   {
     id: 'admin',
+    role: 'admin',
     label: 'Dispatch Administration',
     shortLabel: 'Admin',
     badge: 'CAD SUPERVISOR',
@@ -67,3 +72,4 @@ export const ROLE_MAP = OPERATOR_ROLES.reduce((acc, r) => {
   acc[r.id] = r;
   return acc;
 }, {});
+

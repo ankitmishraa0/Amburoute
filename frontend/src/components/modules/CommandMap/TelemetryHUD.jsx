@@ -83,7 +83,7 @@ export default function TelemetryHUD({
   return (
     <div className="space-y-3">
       
-      {/* Active Patient Pickup Dispatch Banner (Rapido Style) */}
+      {/* Active Patient Pickup Dispatch Banner (Emergency Dispatch) */}
       {ambulance?.active_patient_ride && (
         <div className="p-3.5 bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white rounded-2xl shadow-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in border-2 border-red-400/50">
           <div className="flex items-center space-x-3">
@@ -92,7 +92,7 @@ export default function TelemetryHUD({
             </div>
             <div>
               <div className="text-[10px] uppercase font-bold text-red-200 tracking-wider">
-                🚨 Active Patient Pickup Assigned (Rapido Ride)
+                🚨 Active Patient Pickup Assigned (Emergency Mission)
               </div>
               <div className="text-sm font-black text-white">
                 {ambulance.active_patient_ride.pickupAddress}
@@ -350,9 +350,11 @@ export default function TelemetryHUD({
         isOpen={showCallModal}
         onClose={() => setShowCallModal(false)}
         callerRole="driver"
+        initialTab="doctors"
         callerName="Ambulance MEDIC-12 (Paramedic Rajesh)"
       />
 
     </div>
   );
 }
+

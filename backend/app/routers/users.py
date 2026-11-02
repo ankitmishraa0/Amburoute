@@ -66,6 +66,19 @@ DEFAULT_USERS = [
         "assignedTab": "signals",
         "createdAt": "2026-01-01",
         "description": "Real-time V2I intersection preemption, automated green wave corridors, and manual cycle overrides."
+    },
+    {
+        "id": "patient",
+        "username": "patient",
+        "name": "Citizen Patient (Emergency SOS)",
+        "role": "patient",
+        "department": "Patient Emergency Booking",
+        "badge": "CITIZEN RIDER",
+        "password": "123",
+        "status": "active",
+        "assignedTab": "patient_portal",
+        "createdAt": "2026-01-01",
+        "description": "Emergency 1-tap ambulance booking, live nearby fleet radar, and hospital ICU bed availability."
     }
 ]
 
@@ -219,3 +232,4 @@ def sync_users(users_list: List[dict]):
     if users_list:
         save_users(users_list)
     return {"status": "synced", "count": len(users_list)}
+

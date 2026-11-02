@@ -260,6 +260,10 @@ class EmergencyRideService {
         this._notify('rideCompleted', msg.rideId);
         break;
 
+            case 'AMBULANCE_MOVED':
+        this._notify('ambulanceMoved', msg.location);
+        break;
+
       case 'DRIVER_HEARTBEAT':
         this._recordDriverHeartbeat(msg.driver);
         break;
@@ -373,7 +377,7 @@ class EmergencyRideService {
     ];
   }
 
-  // ================= RIDE DISPATCH (RAPIDO / UBER STYLE) =================
+  // ================= RIDE DISPATCH (Emergency Dispatch) =================
 
   requestRide(ridePayload) {
     const ride = {
@@ -517,3 +521,4 @@ class EmergencyRideService {
 }
 
 export const rideService = new EmergencyRideService();
+
