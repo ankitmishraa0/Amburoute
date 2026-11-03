@@ -28,7 +28,7 @@ import {
   controlSimulation 
 } from './services/api';
 import { soundFx } from './services/sound';
-import { GORAKHPUR_HOSPITALS, generateRouteAndSignals, SCENARIOS_DATA } from './services/locationHospitals';
+import { GORAKHPUR_HOSPITALS, generateRouteAndSignals, generateHospitalsForCoordinates, SCENARIOS_DATA } from './services/locationHospitals';
 import { callService } from './services/callService';
 import { rideService } from './services/rideService';
 
@@ -240,28 +240,45 @@ export default function App() {
     };
   }, [currentUser, isDriver]);
 
-  // When driver accepts an incoming patient ride request
+  // When driver accepts an incoming patient ride request with live patient coordinates
   const handleRideAcceptedByDriver = (acceptedRide) => {
     if (!acceptedRide) return;
     try { soundFx?.playSuccess?.(); } catch (e) {}
 
     setDriverActiveMission(acceptedRide);
+    hasUserRelocatedRef.current = true;
 
     const pickupCoords = acceptedRide.pickupCoords || { lat: 26.7606, lng: 83.3732 };
 
+    // Dynamically calculate hospitals and route connecting to the patient's real live pickup coordinates
+    const localHosp = (Math.abs(pickupCoords.lat - 26.76) < 0.2 && Math.abs(pickupCoords.lng - 83.37) < 0.2)
+      ? hospitals
+      : generateHospitalsForCoordinates(pickupCoords.lat, pickupCoords.lng, acceptedRide.pickupAddress || 'Patient Incident Area');
+
+    const matchedHospital = localHosp.find(h => h.id === acceptedRide.hospitalId) || localHosp[0];
+    const { waypoints, signals: localSignals } = generateRouteAndSignals(pickupCoords.lat, pickupCoords.lng, matchedHospital);
+
+    setHospitals(localHosp);
     setTelemetry(prev => ({
       ...prev,
+      ambulance: {
+        ...prev.ambulance,
+        coordinates: waypoints[0],
+        status: 'en_route_to_patient',
+        target_hospital_id: matchedHospital?.id,
+        distance_remaining_km: 1.8,
+        eta_seconds: 180,
+        active_patient_ride: acceptedRide
+      },
       incident: {
         ...prev.incident,
         title: `Patient Emergency: ${acceptedRide.patientName || 'Citizen Patient'} (${acceptedRide.emergencyType || 'Medical Emergency'})`,
-        address: acceptedRide.pickupAddress,
+        address: acceptedRide.pickupAddress || 'Live GPS Incident Location',
         coordinates: pickupCoords
       },
-      ambulance: {
-        ...prev.ambulance,
-        status: 'en_route_to_patient',
-        active_patient_ride: acceptedRide
-      }
+      signals: localSignals,
+      route_coords: waypoints,
+      ranked_hospitals: localHosp
     }));
   };
 
@@ -682,6 +699,7 @@ export default function App() {
             telemetry={telemetry}
             hospitals={hospitals}
             onNavigateTab={setActiveTab}
+            onLocationRelocated={handleLocationRelocated}
           />
         )}
 

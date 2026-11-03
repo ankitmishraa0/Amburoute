@@ -24,16 +24,21 @@ import { soundFx } from '@/services/sound';
 import { callService, DOCTORS_DIRECTORY } from '@/services/callService';
 import { rideService } from '@/services/rideService';
 import CallSelectorModal from '@/components/common/CallSelectorModal';
-import { generateRouteAndSignals, GORAKHPUR_HOSPITALS } from '@/services/locationHospitals';
+import { generateRouteAndSignals, generateHospitalsForCoordinates, GORAKHPUR_HOSPITALS } from '@/services/locationHospitals';
 
 export default function PatientPortalView({ 
   telemetry, 
   hospitals = [],
-  onNavigateTab 
+  onNavigateTab,
+  onLocationRelocated 
 }) {
-  // Booking Form State
-  const [pickupAddress, setPickupAddress] = useState('Golghar Commercial Hub, Gorakhpur, UP');
+  // Booking Form State with Live GPS Auto-Detection
+  const [pickupAddress, setPickupAddress] = useState('Detecting your live device GPS coordinates...');
   const [pickupCoords, setPickupCoords] = useState({ lat: 26.7606, lng: 83.3732 });
+  const [isLocating, setIsLocating] = useState(false);
+  const [gpsLocked, setGpsLocked] = useState(false);
+  const [gpsAccuracy, setGpsAccuracy] = useState(null);
+  const [gpsError, setGpsError] = useState(null);
   const [selectedEmergency, setSelectedEmergency] = useState('heart_attack');
   const [selectedHospitalId, setSelectedHospitalId] = useState(hospitals[0]?.id || 'hosp-gkp-aiims');
   
@@ -52,6 +57,7 @@ export default function PatientPortalView({
   // Leaflet Map Refs
   const mapContainerRef = useRef(null);
   const mapInstanceRef = useRef(null);
+  const patientMarkerRef = useRef(null);
   const ambulanceMarkerRef = useRef(null);
   const routePolylineRef = useRef(null);
 
@@ -63,9 +69,85 @@ export default function PatientPortalView({
     { id: 'general', label: 'Unconscious / Fainting', emoji: '🩺', desc: 'General emergency' },
   ];
 
-  // Ensure patient call role is initialized immediately on mount
+  // Core Live GPS Acquisition function (Auto-detects device GPS on mount or user tap)
+  const detectLiveLocation = (isUserClick = false) => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) {
+      setGpsError('Geolocation is not supported by your browser.');
+      setPickupAddress('Golghar Commercial Hub, Gorakhpur, UP (Default)');
+      return;
+    }
+
+    setIsLocating(true);
+    setGpsError(null);
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const acc = Math.round(pos.coords.accuracy || 10);
+
+        setPickupCoords({ lat, lng });
+        setGpsAccuracy(acc);
+        setGpsLocked(true);
+        setIsLocating(false);
+
+        if (isUserClick) {
+          try { soundFx?.playSuccess?.(); } catch (e) {}
+        }
+
+        // Smoothly pan map to live GPS coordinates
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.flyTo([lat, lng], 15, { duration: 1.2 });
+        }
+        if (patientMarkerRef.current) {
+          patientMarkerRef.current.setLatLng([lat, lng]);
+        }
+
+        // Fast reverse geocoding via OpenStreetMap Nominatim
+        let resolvedAddr = `Live GPS: ${lat.toFixed(5)}°N, ${lng.toFixed(5)}°E (±${acc}m)`;
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data?.display_name) {
+              resolvedAddr = data.display_name.split(',').slice(0, 4).join(', ');
+            }
+          }
+        } catch (e) {}
+        setPickupAddress(resolvedAddr);
+
+        // Sync system with real local hospitals & signals around the patient's live coordinates
+        if (onLocationRelocated) {
+          const localHosp = (Math.abs(lat - 26.76) < 0.2 && Math.abs(lng - 83.37) < 0.2)
+            ? GORAKHPUR_HOSPITALS
+            : generateHospitalsForCoordinates(lat, lng, resolvedAddr);
+          const targetHosp = localHosp[0];
+          const { waypoints, signals: localSig } = generateRouteAndSignals(lat, lng, targetHosp);
+
+          onLocationRelocated({
+            center: { lat, lng },
+            cityName: resolvedAddr.split(',')[0] || 'My Location',
+            hospitals: localHosp,
+            waypoints,
+            signals: localSig,
+            targetHospitalId: targetHosp?.id
+          });
+        }
+      },
+      (err) => {
+        setIsLocating(false);
+        console.warn('Live GPS acquisition error:', err);
+        setGpsError('GPS permission not allowed or timed out. Tap map to select pickup spot.');
+        setPickupAddress('Golghar Commercial Hub, Gorakhpur, UP (Default)');
+      },
+      { enableHighAccuracy: true, timeout: 9000, maximumAge: 0 }
+    );
+  };
+
+  // Ensure patient call role & auto live GPS detection are initialized immediately on mount
   useEffect(() => {
     callService.init('patient');
+    detectLiveLocation(false);
   }, []);
 
   // Subscribe to real-time online drivers presence
@@ -115,14 +197,42 @@ export default function PatientPortalView({
     };
   }, []);
 
-  // Moving Ambulance Simulation along road coordinates towards patient pickup
+  // Moving Ambulance Simulation along dynamic road coordinates towards patient pickup
   useEffect(() => {
     let animTimer = null;
     if (rideState === 'en_route') {
-      const start = { lat: 26.7500, lng: 83.3900 };
+      const start = { lat: pickupCoords.lat - 0.008, lng: pickupCoords.lng - 0.006 };
       const target = pickupCoords;
       let step = 0;
       const totalSteps = 60; // 60 updates
+
+      const map = mapInstanceRef.current;
+      if (map) {
+        if (ambulanceMarkerRef.current && !map.hasLayer(ambulanceMarkerRef.current)) {
+          ambulanceMarkerRef.current.addTo(map);
+        }
+        if (ambulanceMarkerRef.current) {
+          ambulanceMarkerRef.current.setLatLng([start.lat, start.lng]);
+        }
+
+        if (routePolylineRef.current && map.hasLayer(routePolylineRef.current)) {
+          map.removeLayer(routePolylineRef.current);
+        }
+
+        const polyline = L.polyline([
+          [start.lat, start.lng],
+          [start.lat + (target.lat - start.lat) * 0.5, start.lng + (target.lng - start.lng) * 0.5],
+          [target.lat, target.lng]
+        ], {
+          color: '#EF4444',
+          weight: 4,
+          dashArray: '6, 8',
+          opacity: 0.8
+        }).addTo(map);
+        routePolylineRef.current = polyline;
+
+        map.fitBounds(polyline.getBounds(), { padding: [50, 50] });
+      }
 
       animTimer = setInterval(() => {
         step++;
@@ -151,83 +261,135 @@ export default function PatientPortalView({
           clearInterval(animTimer);
         }
       }, 1000);
+    } else {
+      const map = mapInstanceRef.current;
+      if (map) {
+        if (ambulanceMarkerRef.current && map.hasLayer(ambulanceMarkerRef.current)) {
+          map.removeLayer(ambulanceMarkerRef.current);
+        }
+        if (routePolylineRef.current && map.hasLayer(routePolylineRef.current)) {
+          map.removeLayer(routePolylineRef.current);
+        }
+      }
     }
     return () => clearInterval(animTimer);
   }, [rideState, pickupCoords]);
 
-  // Initialize interactive Leaflet map when ride is en route
+  // Initialize interactive Leaflet map (Always mounted so user can see & fine-tune pickup location)
   useEffect(() => {
-    if (rideState === 'en_route' && mapContainerRef.current && !mapInstanceRef.current) {
-      const map = L.map(mapContainerRef.current, {
-        center: [pickupCoords.lat, pickupCoords.lng],
-        zoom: 14,
-        zoomControl: false
-      });
+    if (!mapContainerRef.current) return;
+    if (mapInstanceRef.current) return;
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-      }).addTo(map);
+    const map = L.map(mapContainerRef.current, {
+      center: [pickupCoords.lat, pickupCoords.lng],
+      zoom: 14,
+      zoomControl: false
+    });
 
-      // Patient Pickup Marker
-      const patientIcon = L.divIcon({
-        className: 'custom-patient-marker',
-        html: `
-          <div style="position: relative; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;">
-            <div style="position: absolute; width: 36px; height: 36px; background: rgba(220, 38, 38, 0.25); border-radius: 50%; animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
-            <div style="width: 26px; height: 26px; background: #DC2626; border: 2.5px solid #FFFFFF; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.3); color: white; font-weight: bold; font-size: 13px;">
-              📍
-            </div>
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Click anywhere on map to set/adjust exact pickup location
+    map.on('click', async (e) => {
+      if (rideState !== 'idle') return;
+      const lat = e.latlng.lat;
+      const lng = e.latlng.lng;
+      setPickupCoords({ lat, lng });
+      setGpsLocked(true);
+      setGpsAccuracy(5);
+      try { soundFx?.playClick?.(); } catch (err) {}
+
+      if (patientMarkerRef.current) {
+        patientMarkerRef.current.setLatLng([lat, lng]);
+      }
+
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.display_name) {
+            setPickupAddress(data.display_name.split(',').slice(0, 4).join(', '));
+            return;
+          }
+        }
+      } catch (err) {}
+      setPickupAddress(`Selected Location (${lat.toFixed(5)}°N, ${lng.toFixed(5)}°E)`);
+    });
+
+    // Patient Live Pickup Marker
+    const patientIcon = L.divIcon({
+      className: 'custom-patient-marker',
+      html: `
+        <div style="position: relative; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center;">
+          <div style="position: absolute; width: 38px; height: 38px; background: rgba(220, 38, 38, 0.3); border-radius: 50%; animation: ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;"></div>
+          <div style="width: 28px; height: 28px; background: #DC2626; border: 2.5px solid #FFFFFF; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.4); color: white; font-weight: bold; font-size: 14px;">
+            📍
           </div>
-        `,
-        iconSize: [36, 36],
-        iconAnchor: [18, 18]
-      });
+        </div>
+      `,
+      iconSize: [38, 38],
+      iconAnchor: [19, 19]
+    });
 
-      L.marker([pickupCoords.lat, pickupCoords.lng], { icon: patientIcon })
-        .addTo(map)
-        .bindPopup(`<b>Your Pickup Point</b><br/>${pickupAddress}`)
-        .openPopup();
+    const patMarker = L.marker([pickupCoords.lat, pickupCoords.lng], { 
+      icon: patientIcon, 
+      draggable: true 
+    }).addTo(map);
 
-      // Moving Ambulance Marker (Ambulance vehicle icon)
-      const ambulanceIcon = L.divIcon({
-        className: 'custom-moving-ambulance-marker',
-        html: `
-          <div style="position: relative; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
-            <div style="width: 32px; height: 32px; background: #1E293B; border: 2.5px solid #EF4444; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.5); font-size: 16px;">
-              🚑
-            </div>
+    patMarker.on('dragend', async (e) => {
+      const pos = e.target.getLatLng();
+      setPickupCoords({ lat: pos.lat, lng: pos.lng });
+      setGpsLocked(true);
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${pos.lat}&lon=${pos.lng}&zoom=18`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.display_name) {
+            setPickupAddress(data.display_name.split(',').slice(0, 4).join(', '));
+            return;
+          }
+        }
+      } catch (err) {}
+      setPickupAddress(`Adjusted Pin (${pos.lat.toFixed(5)}°N, ${pos.lng.toFixed(5)}°E)`);
+    });
+
+    patMarker.bindPopup(`<b>Your Live Pickup Point</b>`).openPopup();
+    patientMarkerRef.current = patMarker;
+
+    // Moving Ambulance Marker (Ambulance vehicle icon)
+    const ambulanceIcon = L.divIcon({
+      className: 'custom-moving-ambulance-marker',
+      html: `
+        <div style="position: relative; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center;">
+          <div style="width: 34px; height: 34px; background: #1E293B; border: 2.5px solid #EF4444; border-radius: 50%; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.5); font-size: 18px;">
+            🚑
           </div>
-        `,
-        iconSize: [40, 40],
-        iconAnchor: [20, 20]
-      });
+        </div>
+      `,
+      iconSize: [42, 42],
+      iconAnchor: [21, 21]
+    });
 
-      const ambMarker = L.marker([26.7500, 83.3900], { icon: ambulanceIcon }).addTo(map);
-      ambulanceMarkerRef.current = ambMarker;
+    const ambMarker = L.marker([pickupCoords.lat - 0.008, pickupCoords.lng - 0.006], { icon: ambulanceIcon });
+    ambulanceMarkerRef.current = ambMarker;
 
-      // Polyline route from ambulance to patient
-      const polyline = L.polyline([
-        [26.7500, 83.3900],
-        [26.7550, 83.3820],
-        [pickupCoords.lat, pickupCoords.lng]
-      ], {
-        color: '#EF4444',
-        weight: 4,
-        dashArray: '6, 8',
-        opacity: 0.8
-      }).addTo(map);
-      routePolylineRef.current = polyline;
-
-      mapInstanceRef.current = map;
-    }
+    mapInstanceRef.current = map;
 
     return () => {
-      if (mapInstanceRef.current && rideState !== 'en_route') {
+      if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();
         mapInstanceRef.current = null;
       }
     };
-  }, [rideState, pickupCoords]);
+  }, []);
+
+  // Keep patient marker synced with pickupCoords
+  useEffect(() => {
+    if (patientMarkerRef.current && pickupCoords) {
+      patientMarkerRef.current.setLatLng([pickupCoords.lat, pickupCoords.lng]);
+    }
+  }, [pickupCoords]);
 
   const selectedHosp = hospitals.find(h => h.id === selectedHospitalId) || hospitals[0] || {
     name: 'AIIMS Gorakhpur Super-Specialty ER',
@@ -286,48 +448,116 @@ export default function PatientPortalView({
   return (
     <div className="space-y-4 max-w-5xl mx-auto pb-12 text-slate-900 dark:text-white">
 
-      {/* TOP LOCATION BAR */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 flex items-center justify-center font-bold text-lg shrink-0">
-            <MapPin className="w-5 h-5 animate-bounce" />
+      {/* TOP LOCATION BAR (REAL-TIME LIVE GPS PICKUP) */}
+      <div className="bg-white dark:bg-slate-900 border-2 border-emerald-500/40 dark:border-emerald-500/30 p-4 rounded-3xl shadow-sm space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-start space-x-3">
+            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-xl shrink-0 mt-0.5 shadow-md ${
+              gpsLocked 
+                ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white ring-2 ring-emerald-400/40' 
+                : 'bg-red-100 dark:bg-red-950/60 text-red-600'
+            }`}>
+              <MapPin className="w-6 h-6 animate-bounce" />
+            </div>
+
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`text-[10px] uppercase font-mono font-black px-2.5 py-0.5 rounded-full border flex items-center gap-1.5 ${
+                  gpsLocked
+                    ? 'bg-emerald-100 dark:bg-emerald-950/80 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
+                    : 'bg-amber-100 dark:bg-amber-950/80 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800'
+                }`}>
+                  <span className={`w-2 h-2 rounded-full ${gpsLocked ? 'bg-emerald-500 animate-ping' : 'bg-amber-500 animate-pulse'}`}></span>
+                  <span>{gpsLocked ? `🟢 LIVE GPS ACTIVE (±${gpsAccuracy || 10}m)` : '📡 WAITING FOR GPS FIX'}</span>
+                </span>
+                
+                <span className="text-[10px] font-mono text-slate-500">
+                  Lat: {pickupCoords.lat.toFixed(5)} • Lng: {pickupCoords.lng.toFixed(5)}
+                </span>
+              </div>
+
+              <div className="text-base font-black text-slate-900 dark:text-white pt-0.5">
+                {isLocating ? 'Acquiring high-precision GPS satellite fix...' : pickupAddress}
+              </div>
+
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                Ambulance driver will pick you up directly from your live GPS location.
+              </div>
+            </div>
           </div>
-          <div>
-            <div className="text-[10px] uppercase font-bold text-slate-400 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>Your Live Pickup Location (Auto-Detected GPS)</span>
-            </div>
-            <div className="text-sm font-black flex items-center gap-2">
-              <span className="truncate">{pickupAddress}</span>
-            </div>
+
+          {/* 1-Tap Actions: Locate Me GPS & Emergency Calls */}
+          <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto flex-wrap">
+            <button
+              type="button"
+              onClick={() => detectLiveLocation(true)}
+              disabled={isLocating}
+              className="py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 text-white font-black text-xs shadow-md hover:shadow-lg transition-all flex items-center gap-1.5 cursor-pointer ring-2 ring-emerald-400/40 disabled:opacity-50"
+              title="Re-acquire current live GPS coordinates"
+            >
+              <Navigation className={`w-4 h-4 ${isLocating ? 'animate-spin' : ''}`} />
+              <span>{isLocating ? 'Locking GPS...' : '🎯 Locate Me (Live GPS)'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                try { soundFx?.playClick?.(); } catch (e) {}
+                setShowCallModal(true);
+              }}
+              className="py-2.5 px-3.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-800 dark:text-slate-200 font-bold text-xs border border-slate-300 dark:border-slate-700 transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <PhoneCall className="w-3.5 h-3.5 text-blue-500" />
+              <span>Directory 📞</span>
+            </button>
           </div>
         </div>
 
-        {/* Top Actions: Emergency Call & Online Driver Badge */}
-        <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto flex-wrap">
+        {gpsError && (
+          <div className="text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 p-2.5 rounded-xl border border-amber-200 dark:border-amber-900/60 flex items-center justify-between">
+            <span>⚠️ {gpsError}</span>
+            <button
+              type="button"
+              onClick={() => detectLiveLocation(true)}
+              className="underline font-bold ml-2 cursor-pointer"
+            >
+              Retry GPS
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* CONTINUOUS INTERACTIVE LEAFLET MAP (Active across all states) */}
+      <div className="relative w-full h-[320px] rounded-3xl overflow-hidden border-2 border-slate-200 dark:border-slate-800 shadow-md">
+        <div ref={mapContainerRef} className="w-full h-full z-10" />
+
+        {/* Floating Live Pickup Pin HUD */}
+        <div className="absolute top-3 left-3 z-20 bg-slate-900/90 backdrop-blur-md text-white p-3 rounded-2xl border border-slate-700 text-xs shadow-xl space-y-1 max-w-sm pointer-events-none">
+          <div className="flex items-center gap-1.5 text-emerald-400 font-bold text-[11px]">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+            <span>LIVE PATIENT PICKUP LOCATION</span>
+          </div>
+          <div className="font-bold text-white text-xs truncate">
+            {pickupAddress}
+          </div>
+          <div className="text-[10px] text-slate-400">
+            {rideState === 'idle' 
+              ? '💡 Tap anywhere on map or drag pin to adjust your exact pickup spot'
+              : '🚑 Ambulance is navigating live directly to this pickup spot'}
+          </div>
+        </div>
+
+        {/* Re-center GPS button on map */}
+        <div className="absolute bottom-3 right-3 z-20">
           <button
             type="button"
-            onClick={() => {
-              try { soundFx?.playClick?.(); } catch (e) {}
-              setShowCallModal(true);
-            }}
-            className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 text-white font-black text-xs shadow-sm flex items-center gap-1.5 cursor-pointer ring-1 ring-blue-400/30"
+            onClick={() => detectLiveLocation(true)}
+            className="py-2 px-3.5 bg-slate-900/90 hover:bg-slate-800 text-white border border-slate-700 rounded-xl text-xs font-bold shadow-lg flex items-center gap-1.5 cursor-pointer backdrop-blur-sm transition-transform hover:scale-105"
+            title="Re-center map to my live GPS location"
           >
-            <PhoneCall className="w-3.5 h-3.5" />
-            <span>Emergency Directory 📞</span>
+            <Navigation className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Re-Center GPS</span>
           </button>
-
-          <div className="flex items-center gap-2 text-xs font-bold px-3 py-1.5 rounded-xl border bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            <span>
-              {onlineDrivers.length > 0 
-                ? `${onlineDrivers.length} Driver Online` 
-                : '0 Drivers Online'}
-            </span>
-          </div>
         </div>
       </div>
 
@@ -344,13 +574,13 @@ export default function PatientPortalView({
 
           <div className="space-y-1">
             <span className="text-[11px] font-black uppercase tracking-wider text-red-600 dark:text-red-400 bg-red-100 dark:bg-red-950/60 px-3 py-1 rounded-full inline-block animate-pulse">
-              🚨 CONNECTING TO AMBULANCE DRIVER
+              🚨 DISPATCHING TO DRIVER
             </span>
             <h3 className="text-xl font-black pt-1">
-              Sending Ride Request to Ambulance Driver...
+              Sending Ride Request with Live GPS to Driver...
             </h3>
             <p className="text-xs text-slate-500 max-w-md mx-auto">
-              Request sent with your live GPS location. Driver's mobile is ringing. Please wait while driver accepts...
+              Request sent with your exact GPS coordinates ({pickupCoords.lat.toFixed(4)}, {pickupCoords.lng.toFixed(4)}). Ambulance mobile is ringing. Please wait while driver accepts...
             </p>
           </div>
 
@@ -385,7 +615,7 @@ export default function PatientPortalView({
         </div>
       )}
 
-      {/* ==================== STATE 2: LIVE MOVING MAP TRACKING (Emergency Dispatch) ==================== */}
+      {/* ==================== STATE 2: EN ROUTE TO PATIENT LIVE GPS ==================== */}
       {rideState === 'en_route' && (
         <div className="space-y-4 animate-fade-in">
           
@@ -393,10 +623,10 @@ export default function PatientPortalView({
           <div className="bg-gradient-to-r from-red-600 via-rose-600 to-red-700 text-white p-5 rounded-3xl shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4 ring-4 ring-red-500/20">
             <div className="space-y-1">
               <span className="px-3 py-1 bg-white/20 rounded-full text-xs font-mono font-black uppercase tracking-wider inline-block animate-pulse">
-                🟢 DRIVER ACCEPTED • AMBULANCE IS RUSHING TO YOU
+                🟢 DRIVER EN ROUTE TO YOUR LIVE GPS LOCATION
               </span>
               <h2 className="text-xl font-black">
-                {activeRide?.ambulanceCallsign || 'Ambulance MEDIC-12'} is En Route!
+                {activeRide?.ambulanceCallsign || 'Ambulance MEDIC-12'} is Rushing to You!
               </h2>
               <p className="text-xs text-red-100 flex items-center gap-2">
                 <span>Driver: <strong>{activeRide?.driverName || 'Rajesh Sharma'}</strong></span>
@@ -419,23 +649,22 @@ export default function PatientPortalView({
             </div>
           </div>
 
-          {/* INTERACTIVE Emergency MOVING MAP */}
-          <div className="relative w-full h-[360px] rounded-3xl overflow-hidden border-2 border-slate-200 dark:border-slate-800 shadow-md">
-            <div ref={mapContainerRef} className="w-full h-full z-10" />
-
-            {/* Floating Live Tracking Card on Map */}
-            <div className="absolute top-4 left-4 z-20 bg-slate-900/90 backdrop-blur-md text-white p-3 rounded-2xl border border-slate-700 text-xs shadow-xl space-y-1 max-w-xs">
-              <div className="flex items-center gap-1.5 text-emerald-400 font-bold text-[11px]">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                <span>LIVE AMBULANCE VEHICLE GPS</span>
+          {/* Quick Voice Call & Destination Bar */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-2xl shrink-0">
+                👨‍✈️
               </div>
-              <div className="font-bold text-white text-xs">
-                Ambulance is moving towards your pickup point
+              <div>
+                <div className="font-black text-sm">{activeRide?.driverName || 'Driver Rajesh Sharma'}</div>
+                <div className="text-xs text-slate-500">Phone: {activeRide?.driverPhone || '+91 98765-43210'} • ⭐ 4.9 (420+ Rescues)</div>
+                <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5">
+                  Destination Hospital: {selectedHosp.name} (Trauma Bay Alerted)
+                </div>
               </div>
             </div>
 
-            {/* Voice Call Driver Button floating right */}
-            <div className="absolute bottom-4 right-4 z-20">
+            <div className="flex items-center gap-2 flex-wrap">
               <button
                 type="button"
                 onClick={() => {
@@ -449,10 +678,10 @@ export default function PatientPortalView({
                     department: 'Ambulance Cab Intercom'
                   });
                 }}
-                className="py-3 px-5 rounded-2xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white font-black text-xs shadow-2xl flex items-center space-x-2 cursor-pointer ring-2 ring-red-400 animate-pulse"
+                className="py-2.5 px-4 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 text-white font-black text-xs shadow-md flex items-center space-x-1.5 cursor-pointer ring-2 ring-red-400"
               >
                 <PhoneCall className="w-4 h-4 fill-current" />
-                <span>Call Driver (Voice Only) 📞</span>
+                <span>Call Driver 📞</span>
               </button>
 
               <button
@@ -468,38 +697,48 @@ export default function PatientPortalView({
                     department: 'AIIMS Gorakhpur ER Triage Desk'
                   });
                 }}
-                className="py-3 px-5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs shadow-xl flex items-center space-x-2 cursor-pointer ring-2 ring-blue-400"
+                className="py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 text-white font-black text-xs shadow-md flex items-center space-x-1.5 cursor-pointer ring-2 ring-blue-400"
               >
                 <Building2 className="w-4 h-4" />
                 <span>Call AIIMS ER Doctor 🏥</span>
               </button>
+
+              <button
+                type="button"
+                onClick={handleCancelRequest}
+                className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-red-100 dark:bg-slate-800 dark:hover:bg-red-950/40 text-slate-600 dark:text-slate-400 hover:text-red-600 text-xs font-bold transition-colors cursor-pointer"
+              >
+                Cancel Ride
+              </button>
             </div>
           </div>
 
-          {/* Driver & Hospital Details Bar */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-2xl shrink-0">
-                👨‍✈️
-              </div>
-              <div>
-                <div className="font-black text-sm">{activeRide?.driverName || 'Driver Rajesh Sharma'}</div>
-                <div className="text-xs text-slate-500">Phone: {activeRide?.driverPhone || '+91 98765-43210'} • ⭐ 4.9 (420+ Rescues)</div>
-                <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold mt-0.5">
-                  Destination: {selectedHosp.name} (Trauma Bay Alerted)
-                </div>
-              </div>
-            </div>
+        </div>
+      )}
 
-            <button
-              type="button"
-              onClick={handleCancelRequest}
-              className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-red-100 dark:bg-slate-800 dark:hover:bg-red-950/40 text-slate-600 dark:text-slate-400 hover:text-red-600 text-xs font-bold transition-colors cursor-pointer"
-            >
-              Cancel Ride
-            </button>
+      {/* ==================== STATE 4: ARRIVED AT LIVE GPS LOCATION ==================== */}
+      {rideState === 'arrived' && (
+        <div className="p-6 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-3xl shadow-xl flex flex-col md:flex-row items-center justify-between gap-4 animate-bounce">
+          <div className="space-y-1">
+            <h3 className="text-xl font-black">
+              🚑 Ambulance Has Arrived at Your Pickup Location!
+            </h3>
+            <p className="text-xs text-emerald-100">
+              Paramedic Rajesh Sharma and medical crew are outside. Proceed safely to the ambulance vehicle.
+            </p>
           </div>
 
+          <button
+            type="button"
+            onClick={() => {
+              try { soundFx?.playClick?.(); } catch (e) {}
+              setRideState('idle');
+              setActiveRide(null);
+            }}
+            className="py-2.5 px-5 bg-white text-emerald-700 font-black rounded-xl text-xs shadow-md hover:bg-emerald-50 transition-all cursor-pointer"
+          >
+            Complete Mission / Reset
+          </button>
         </div>
       )}
 

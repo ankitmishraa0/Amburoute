@@ -257,6 +257,13 @@ export default function LiveMap({ telemetry, hospitals = [], onLocationRelocated
         routePolylineCoreRef.current.setLatLngs(routeCoords);
         routePolylineCoreRef.current.setStyle({ color: coreColor });
       }
+
+      // Auto-focus corridor to patient's live pickup location when active ride accepted
+      if (amb?.status === 'en_route_to_patient' && !hasUserRelocatedRef?.current) {
+        try {
+          map.fitBounds(L.polyline(routeCoords).getBounds(), { padding: [50, 50], maxZoom: 15 });
+        } catch (e) {}
+      }
     }
   }, [telemetry]);
 
