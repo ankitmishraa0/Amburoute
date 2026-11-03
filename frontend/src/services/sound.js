@@ -88,6 +88,24 @@ class SoundEngine {
     setTimeout(() => this.playBeep(770, 'sawtooth', 0.3, 0.12), 300);
   }
 
+  playRadioChirp() {
+    if (this.isMuted) return;
+    try {
+      this._initContext();
+      this.playBeep(940, 'triangle', 0.06, 0.12);
+      setTimeout(() => this.playBeep(1480, 'sine', 0.08, 0.14), 60);
+      setTimeout(() => this.playBeep(880, 'sine', 0.05, 0.08), 150);
+    } catch (e) {}
+  }
+
+  playMedicalTelemetryBeep() {
+    if (this.isMuted) return;
+    try {
+      this._initContext();
+      this.playBeep(1046.5, 'sine', 0.08, 0.09); // C6
+    } catch (e) {}
+  }
+
   startRinging() {
     if (this.isMuted || this.ringInterval) return;
     const ringPattern = () => {

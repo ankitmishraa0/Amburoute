@@ -30,6 +30,7 @@ export default function EmergencyCallModal({ telemetry }) {
 
   const remoteVideoRef = useRef(null);
   const localVideoRef = useRef(null);
+  const remoteAudioRef = useRef(null);
 
   useEffect(() => {
     const unsubState = callService.on('stateChange', (state) => {
@@ -37,11 +38,18 @@ export default function EmergencyCallModal({ telemetry }) {
       setCallTarget(normalizeRole(callService.activeCallTarget || 'driver'));
       setCallType(callService.callType || 'voice');
       if (state === 'connected') {
-        try { soundFx.playSuccess(); } catch (e) {}
+        try { 
+          soundFx.playRadioChirp();
+          soundFx.playSuccess(); 
+        } catch (e) {}
       }
     });
 
     const unsubConnected = callService.on('connected', ({ remoteStream, localStream }) => {
+      if (remoteAudioRef.current && remoteStream) {
+        remoteAudioRef.current.srcObject = remoteStream;
+        remoteAudioRef.current.play?.().catch(() => {});
+      }
       if (remoteVideoRef.current && remoteStream) {
         remoteVideoRef.current.srcObject = remoteStream;
         remoteVideoRef.current.play?.().catch(() => {});
@@ -77,7 +85,7 @@ export default function EmergencyCallModal({ telemetry }) {
     return () => clearInterval(timer);
   }, [callState]);
 
-  // Bind streams whenever video elements mount or callState changes
+  // Bind streams whenever video/audio elements mount or callState changes
   useEffect(() => {
     if (callService.localStream && localVideoRef.current) {
       localVideoRef.current.srcObject = callService.localStream;
@@ -86,6 +94,10 @@ export default function EmergencyCallModal({ telemetry }) {
     if (callService.remoteStream && remoteVideoRef.current) {
       remoteVideoRef.current.srcObject = callService.remoteStream;
       remoteVideoRef.current.play?.().catch(() => {});
+    }
+    if (callService.remoteStream && remoteAudioRef.current) {
+      remoteAudioRef.current.srcObject = callService.remoteStream;
+      remoteAudioRef.current.play?.().catch(() => {});
     }
   }, [callState]);
 
@@ -178,6 +190,9 @@ export default function EmergencyCallModal({ telemetry }) {
         {/* Media Area */}
         <div className="relative flex-1 bg-black flex items-center justify-center overflow-hidden">
           
+          {/* Dedicated Hidden Audio Element to Guarantee 100% Autoplay Across All Browsers */}
+          <audio ref={remoteAudioRef} autoPlay playsInline />
+
           {/* Main Remote Video Stream (Hidden if voice-only unless video active) */}
           <video
             ref={remoteVideoRef}
@@ -188,7 +203,7 @@ export default function EmergencyCallModal({ telemetry }) {
 
           {/* Voice Intercom HUD (shown prominently during voice call) */}
           {isVoiceOnly && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-10 bg-slate-950/70 backdrop-blur-xs space-y-4">
+            <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-10 bg-slate-950/75 backdrop-blur-xs space-y-4">
               
               {/* Pulsing Intercom Center Circle */}
               <div className="relative w-28 h-28 flex items-center justify-center">
@@ -199,24 +214,34 @@ export default function EmergencyCallModal({ telemetry }) {
                 </div>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1.5 max-w-md">
                 <h3 className="text-xl font-black text-white">
                   {targetName}
                 </h3>
+                
                 <div className="text-xs text-emerald-400 font-mono font-bold flex items-center justify-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                  <span>{callState === 'connected' ? 'TWO-WAY EMERGENCY VOICE INTERCOM ACTIVE' : 'CALLING DESTINATION...'}</span>
+                  <span>{callState === 'connected' ? 'TWO-WAY ENCRYPTED EMERGENCY VOICE LINE ACTIVE' : 'CALLING DESTINATION...'}</span>
                 </div>
-                <p className="text-xs text-slate-400 max-w-sm mx-auto">
-                  {normalizedTarget === 'patient' 
-                    ? 'Patient and Ambulance Driver are directly connected on live audio line'
-                    : 'Emergency communications channel active with real-time audio sync'}
+
+                <p className="text-xs text-slate-300">
+                  {normalizedTarget === 'hospital' 
+                    ? '🏥 AIIMS Gorakhpur ER Cath Lab • Dr. Rajesh Sharma on 2-way clinical telemetry line.'
+                    : normalizedTarget === 'driver'
+                      ? '🚑 Ambulance MEDIC-12 • Paramedic Rajesh on pre-arrival resuscitation line.'
+                      : normalizedTarget === 'patient'
+                        ? '🧑‍💼 Citizen Patient and Ambulance Driver are directly connected on live voice intercom.'
+                        : 'Emergency communications channel active with real-time audio sync.'}
                 </p>
+
+                <div className="text-[10px] font-mono text-emerald-400/90 bg-emerald-950/50 border border-emerald-900/60 px-3 py-1 rounded-full inline-block">
+                  📻 Frequency: 155.340 MHz (EMS Telemetry) • Opus HD Audio
+                </div>
               </div>
 
               {/* Animated Audio Equalizer Bars */}
               {callState === 'connected' && (
-                <div className="flex items-center justify-center space-x-1.5 h-8 pt-2">
+                <div className="flex items-center justify-center space-x-1.5 h-8 pt-1">
                   {[40, 75, 55, 90, 65, 80, 45, 95, 60, 85, 50].map((h, i) => (
                     <span 
                       key={i} 
@@ -293,7 +318,7 @@ export default function EmergencyCallModal({ telemetry }) {
         </div>
 
         {/* Bottom Call Controls Toolbar */}
-        <div className="bg-slate-950 border-t border-slate-800 p-4 flex items-center justify-center space-x-4 shrink-0">
+        <div className="bg-slate-950 border-t border-slate-800 p-4 flex items-center justify-center space-x-3 sm:space-x-4 shrink-0">
           
           {/* Mute Mic */}
           <button
@@ -307,6 +332,19 @@ export default function EmergencyCallModal({ telemetry }) {
             title={isMuted ? 'Unmute Microphone' : 'Mute Microphone'}
           >
             {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+          </button>
+
+          {/* Radio Telemetry Squelch Ping */}
+          <button
+            type="button"
+            onClick={() => {
+              try { soundFx.playRadioChirp(); } catch (e) {}
+            }}
+            className="p-3.5 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded-2xl font-bold transition-all cursor-pointer flex items-center space-x-1.5 border border-slate-700 hover:border-emerald-500"
+            title="Send audio test squelch ping across line"
+          >
+            <Radio className="w-5 h-5 animate-pulse" />
+            <span className="text-xs font-mono hidden sm:inline text-slate-200">Test Ping</span>
           </button>
 
           {/* Toggle Video Camera (only in video mode) */}

@@ -232,18 +232,39 @@ export default function HospitalHandoffView({
           </div>
         </button>
 
-        {/* 3. Call Paramedic */}
-        <button
-          type="button"
-          onClick={() => setShowCallModal(true)}
-          className="p-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-2xl font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center space-x-2.5 cursor-pointer"
-        >
-          <PhoneCall className="w-6 h-6 animate-pulse" />
-          <div className="text-left leading-tight">
-            <div className="text-xs uppercase text-blue-200">Direct Audio</div>
-            <div className="text-sm font-black">Call Ambulance Driver 📞</div>
-          </div>
-        </button>
+        {/* 3. Direct 1-Tap Call to Ambulance Driver */}
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              try { soundFx?.playClick?.(); } catch (e) {}
+              callService.makeCall({
+                targetRole: 'driver',
+                callerRole: 'hospital',
+                callType: 'voice',
+                callerName: 'Dr. Rajesh Sharma (AIIMS ER Cath Lab)',
+                targetName: 'Ambulance MEDIC-12 (Paramedic Rajesh)',
+                department: 'AIIMS Interventional Cardiology Bay 1'
+              });
+            }}
+            className="flex-1 p-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-2xl font-bold shadow-md hover:shadow-lg transition-all flex items-center justify-center space-x-2.5 cursor-pointer ring-2 ring-blue-400/40"
+          >
+            <PhoneCall className="w-5 h-5 animate-pulse" />
+            <div className="text-left leading-tight">
+              <div className="text-[10px] uppercase text-blue-200 font-mono">1-Tap Direct Call</div>
+              <div className="text-sm font-black">Call MEDIC-12 📞</div>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowCallModal(true)}
+            className="p-4 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 border-2 border-slate-300 dark:border-slate-700 rounded-2xl font-bold transition-all flex items-center justify-center cursor-pointer shadow-sm"
+            title="Open Directory to Choose Other Ambulances or Traffic"
+          >
+            <Radio className="w-5 h-5 text-blue-500" />
+          </button>
+        </div>
 
       </div>
 

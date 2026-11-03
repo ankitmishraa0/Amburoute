@@ -236,8 +236,9 @@ class EmergencyCallService {
         const targetRole = normalizeRole(activeCall.targetRole);
         const callerRole = normalizeRole(activeCall.callerRole);
 
-        // Check if there is an incoming call meant for my role
-        if (targetRole === this.myRole && activeCall.status === 'outgoing') {
+        // Check if there is an incoming call meant for my role (or if current session is admin)
+        const isTargetMe = targetRole === this.myRole || this.myRole === 'admin';
+        if (isTargetMe && activeCall.status === 'outgoing') {
           if (this.callState === 'idle') {
             this._triggerIncomingCall({
               callerRole: activeCall.callerRole,
@@ -397,9 +398,10 @@ class EmergencyCallService {
       return;
     }
 
-    // Check if message is intended for my normalized role
+    // Check if message is intended for my normalized role (or if current session is admin)
     const targetRole = normalizeRole(msg.targetRole);
-    if (targetRole !== this.myRole) return;
+    const isTargetMe = targetRole === this.myRole || this.myRole === 'admin';
+    if (!isTargetMe) return;
 
     if (msg.type === 'CALL_REQUEST') {
       this._triggerIncomingCall({
@@ -439,20 +441,24 @@ class EmergencyCallService {
     }
   }
 
-  // Acquire camera and mic stream with instant 800ms fallback so calling NEVER hangs
+  // Acquire camera and mic stream with 3500ms fallback so browser permissions have time to prompt
   async getLocalStream(needVideo = true) {
     if (this.localStream) return this.localStream;
 
     try {
       const streamPromise = (typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia)
         ? navigator.mediaDevices.getUserMedia({
-            audio: true,
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true
+            },
             video: needVideo ? { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' } : false
           })
         : Promise.reject(new Error('MediaDevices not available'));
 
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Audio/Video acquisition timeout')), 800)
+        setTimeout(() => reject(new Error('Audio/Video acquisition timeout')), 3500)
       );
 
       const stream = await Promise.race([streamPromise, timeoutPromise]);
@@ -544,18 +550,40 @@ class EmergencyCallService {
     // Canvas stream
     const canvasStream = canvas.captureStream ? canvas.captureStream(25) : new MediaStream();
 
-    // Synthetic audio track
+    // Synthetic audio track with soft medical telemetry pulses so testing NEVER experiences dead silence
     const AudioContextClass = typeof window !== 'undefined' ? (window.AudioContext || window.webkitAudioContext) : null;
     if (AudioContextClass) {
       try {
         const audioCtx = new AudioContextClass();
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
-        gain.gain.value = 0.001; // inaudible carrier so track exists
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(520, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.006, audioCtx.currentTime); // gentle background radio presence
         osc.connect(gain);
+
         const dest = audioCtx.createMediaStreamDestination();
         gain.connect(dest);
         osc.start();
+
+        // Soft periodic hospital/ambulance telemetry beep every 4s into the stream
+        if (this._activeSynthInterval) clearInterval(this._activeSynthInterval);
+        this._activeSynthInterval = setInterval(() => {
+          if (!gain || !audioCtx || audioCtx.state === 'closed') return;
+          try {
+            const now = audioCtx.currentTime;
+            osc.frequency.setValueAtTime(940, now);
+            gain.gain.setValueAtTime(0.04, now);
+            gain.gain.exponentialRampToValueAtTime(0.006, now + 0.12);
+            setTimeout(() => {
+              if (osc && audioCtx.state !== 'closed') {
+                osc.frequency.setValueAtTime(520, audioCtx.currentTime);
+              }
+            }, 140);
+          } catch (e) {}
+        }, 4000);
+
+        this._synthAudioCtx = audioCtx;
         dest.stream.getAudioTracks().forEach(track => canvasStream.addTrack(track));
       } catch (err) {}
     }
@@ -752,6 +780,15 @@ class EmergencyCallService {
       this.activeCall = null;
     }
 
+    if (this._activeSynthInterval) {
+      clearInterval(this._activeSynthInterval);
+      this._activeSynthInterval = null;
+    }
+    if (this._synthAudioCtx) {
+      try { this._synthAudioCtx.close(); } catch (e) {}
+      this._synthAudioCtx = null;
+    }
+
     if (this.localStream) {
       this.localStream.getTracks().forEach(track => track.stop());
       this.localStream = null;
@@ -768,6 +805,13 @@ class EmergencyCallService {
 
     this._notify('stateChange', this.callState);
     this._notify('ended');
+  }
+
+  // Quick audio ping to test radio voice line
+  pingAudio() {
+    try {
+      soundFx.playRadioChirp();
+    } catch (e) {}
   }
 
   // Instant simulation connect for single-screen demo

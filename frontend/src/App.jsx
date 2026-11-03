@@ -208,15 +208,17 @@ export default function App() {
     };
 
     let effectiveRole = 'driver';
-    if (activeTab === 'patient_portal') {
-      effectiveRole = 'patient';
-    } else if (activeTab === 'handoff') {
+    if (activeTab === 'command_map') {
+      effectiveRole = 'driver';
+    } else if (activeTab === 'handoff' || activeTab === 'triage') {
       effectiveRole = 'hospital';
     } else if (activeTab === 'signals') {
       effectiveRole = 'traffic';
-    } else if (currentUser?.role) {
+    } else if (activeTab === 'patient_portal') {
+      effectiveRole = 'patient';
+    } else if (currentUser?.role && currentUser.role !== 'admin') {
       effectiveRole = currentUser.role;
-    } else if (currentUser?.id) {
+    } else if (currentUser?.id && currentUser.id !== 'admin') {
       effectiveRole = currentUser.id;
     } else {
       effectiveRole = tabToRole[activeTab] || 'driver';

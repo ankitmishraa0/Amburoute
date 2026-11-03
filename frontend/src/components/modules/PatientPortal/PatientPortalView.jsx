@@ -454,6 +454,25 @@ export default function PatientPortalView({
                 <PhoneCall className="w-4 h-4 fill-current" />
                 <span>Call Driver (Voice Only) 📞</span>
               </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  try { soundFx?.playClick?.(); } catch (e) {}
+                  callService.makeCall({
+                    targetRole: 'hospital',
+                    callerRole: 'patient',
+                    callType: 'voice',
+                    callerName: 'Citizen Patient (Self)',
+                    targetName: 'Dr. Rajesh Sharma (AIIMS ER Lead)',
+                    department: 'AIIMS Gorakhpur ER Triage Desk'
+                  });
+                }}
+                className="py-3 px-5 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-black text-xs shadow-xl flex items-center space-x-2 cursor-pointer ring-2 ring-blue-400"
+              >
+                <Building2 className="w-4 h-4" />
+                <span>Call AIIMS ER Doctor 🏥</span>
+              </button>
             </div>
           </div>
 
