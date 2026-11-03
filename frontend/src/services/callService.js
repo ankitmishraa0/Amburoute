@@ -277,9 +277,13 @@ class EmergencyCallService {
     return `amburoute-st-${cleanRole}`;
   }
 
-  // Initialize service for currently logged-in user
+  // Initialize service for currently logged-in user with idempotency guard
   init(role) {
-    this.myRole = normalizeRole(role || 'driver');
+    const cleanRole = normalizeRole(role || 'driver');
+    if (this.myRole === cleanRole && this.peer && !this.peer.destroyed) {
+      return; // Already cleanly connected as this role, do not recreate!
+    }
+    this.myRole = cleanRole;
     this.myPeerId = this.getPeerIdForRole(this.myRole);
 
     this._connectPeer(this.myPeerId);
@@ -584,9 +588,6 @@ class EmergencyCallService {
     const normalizedTargetRole = normalizeRole(targetRole);
     const normalizedCallerRole = normalizeRole(callerRole);
 
-    this.myRole = normalizedCallerRole;
-    this.myPeerId = this.getPeerIdForRole(this.myRole);
-
     this.callState = 'outgoing';
     this.activeCallTarget = normalizedTargetRole;
     this.activeCallTargetName = targetName;
@@ -598,7 +599,7 @@ class EmergencyCallService {
 
     const signalMsg = {
       type: 'CALL_REQUEST',
-      callerRole: this.myRole,
+      callerRole: normalizedCallerRole,
       callerName: callerName,
       targetRole: normalizedTargetRole,
       targetName: targetName,
@@ -617,25 +618,16 @@ class EmergencyCallService {
     // 2. Broadcast signal across local browser tabs & windows IMMEDIATELY
     this._broadcastSignal(signalMsg);
 
-    // 3. Auto-connect timer: If remote party hasn't answered within 3.2s (e.g. single-device demo), auto-connect!
-    if (this.autoConnectTimer) clearTimeout(this.autoConnectTimer);
-    this.autoConnectTimer = setTimeout(() => {
-      if (this.callState === 'outgoing') {
-        console.log('[CallService] Auto-connecting emergency call line for instant demo testing');
-        this.simulateConnected();
-      }
-    }, 3200);
-
-    // 4. Acquire local audio/video stream in background
+    // 3. Acquire local audio/video stream in background without blocking
     const localStream = await this.getLocalStream(callType === 'video');
 
-    // 5. Connect via PeerJS to peer on other device (if available)
+    // 4. Connect via PeerJS to peer on other device (if available)
     if (this.peer && !this.peer.destroyed) {
       const targetPeerId = this.activeRolePeerIds[normalizedTargetRole] || this.getPeerIdForRole(normalizedTargetRole);
       try {
         const call = this.peer.call(targetPeerId, localStream, {
           metadata: {
-            callerRole: this.myRole,
+            callerRole: normalizedCallerRole,
             callerName: callerName,
             targetName: targetName,
             department: department,
@@ -647,10 +639,6 @@ class EmergencyCallService {
           this.activeCall = call;
 
           call.on('stream', (remoteMediaStream) => {
-            if (this.autoConnectTimer) {
-              clearTimeout(this.autoConnectTimer);
-              this.autoConnectTimer = null;
-            }
             try { soundFx?.stopRinging?.(); } catch (e) {}
             this.remoteStream = remoteMediaStream;
             this.callState = 'connected';
@@ -671,11 +659,6 @@ class EmergencyCallService {
   // Accept incoming call
   async acceptCall() {
     if (!this.incomingCallData) return;
-
-    if (this.autoConnectTimer) {
-      clearTimeout(this.autoConnectTimer);
-      this.autoConnectTimer = null;
-    }
 
     try { soundFx?.stopRinging?.(); } catch (e) {}
 
@@ -714,7 +697,7 @@ class EmergencyCallService {
     this._notify('connected', { remoteStream: displayStream, localStream: this.localStream });
     this._notify('stateChange', this.callState);
 
-    // Answer WebRTC peer call if available
+    // Answer WebRTC peer call asynchronously if available
     this.getLocalStream(callType === 'video').then(localStream => {
       if (this.activeCall && this.activeCall.answer) {
         try {
@@ -727,10 +710,6 @@ class EmergencyCallService {
 
   // Reject incoming call
   rejectCall() {
-    if (this.autoConnectTimer) {
-      clearTimeout(this.autoConnectTimer);
-      this.autoConnectTimer = null;
-    }
     try { soundFx?.stopRinging?.(); } catch (e) {}
 
     if (this.incomingCallData) {
@@ -756,10 +735,6 @@ class EmergencyCallService {
 
   // End active call
   endCall(broadcast = true) {
-    if (this.autoConnectTimer) {
-      clearTimeout(this.autoConnectTimer);
-      this.autoConnectTimer = null;
-    }
     try { soundFx?.stopRinging?.(); } catch (e) {}
 
     if (broadcast && this.activeCallTarget) {
@@ -797,10 +772,6 @@ class EmergencyCallService {
 
   // Instant simulation connect for single-screen demo
   simulateConnected() {
-    if (this.autoConnectTimer) {
-      clearTimeout(this.autoConnectTimer);
-      this.autoConnectTimer = null;
-    }
     try { soundFx?.stopRinging?.(); } catch (e) {}
     this.callState = 'connected';
     const displayStream = this.remoteStream || this.localStream || this._createSyntheticMediaStream(this.callType === 'video');

@@ -75,6 +75,8 @@ class EmergencyRideService {
     try {
       const res = await fetch('/api/ride/state', { cache: 'no-store' });
       if (!res.ok) return;
+      const ct = res.headers.get('content-type') || '';
+      if (!ct.includes('application/json')) return; // Avoid Vercel HTML rewrite crash
       const data = await res.json();
       if (!data) return;
 
